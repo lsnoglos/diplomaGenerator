@@ -3,6 +3,8 @@ import React, { useState } from 'react';
 function App() {
   const [fontPath, setFontPath] = useState('');
   const [imgPath, setImgPath] = useState('');
+  const [listPath, setListPath] = useState('');
+  const [namesList, setNamesList] = useState([]);
 
   const selectFont = (e) => {
     const file = e.target.files[0];
@@ -15,6 +17,20 @@ function App() {
     const file = e.target.files[0];
     if (file) {
       setImgPath(URL.createObjectURL(file));
+    }
+  };
+
+  const selectList = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setListPath(file);
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const content = event.target.result;
+        const names = content.split(',').map((name) => name.trim());
+        setNamesList(names);
+      };
+      reader.readAsText(file, 'UTF-8');
     }
   };
 
@@ -40,6 +56,16 @@ function App() {
           </label>
         </button>
         <span>{imgPath ? 'Imagen seleccionada' : 'Seleccione imagen de fondo'}</span>
+      </div>
+
+      <div>
+        <button>
+          <label>
+            Seleccione Lista
+            <input type="file" accept=".txt" onChange={selectList} style={{ display: 'none' }} />
+          </label>
+        </button>
+        <span>{listPath.name || 'Seleccione nombres (separados por coma)'}</span>
       </div>
 
     </div>
