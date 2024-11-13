@@ -11,21 +11,16 @@ function App() {
   const [diplomaWidthCm, setDiplomaWidthCm] = useState(5);
   const [diplomaHeightCm, setDiplomaHeightCm] = useState(5);
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-
-    const sizeInPx = cmToPx(1);
-    canvas.width = sizeInPx;
-    canvas.height = sizeInPx;
-
-    ctx.fillStyle = 'white';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-  }, []);
+  const [textColor, setTextColor] = useState('#000000');
+  const [textAreaWidthCm, setTextAreaWidthCm] = useState(4);
+  const [textAreaHeightCm, setTextAreaHeightCm] = useState(4);
 
   const cmToPx = (cm) => (cm * 96) / 2.54;
 
   const previewCanvas = () => {
+
+    let fontSize = 20;
+
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
 
@@ -34,8 +29,29 @@ function App() {
     canvas.width = widthPx;
     canvas.height = heightPx;
 
+    const text = 'Nombre preparado para vista previa';
+    const textWidthPx = cmToPx(textAreaWidthCm);
+    const textHeightPx = cmToPx(textAreaHeightCm);
+
     ctx.fillStyle = 'red';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = textColor;
+    ctx.font = '20px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    do {
+      ctx.font = `${fontSize}px Arial`;
+      var metrics = ctx.measureText(text);
+      var textWidth = metrics.width;
+      fontSize--;
+    } while (textWidth > textWidthPx && fontSize > 5);
+
+    let textX = canvas.width / 2;
+    let textY = canvas.height / 2;
+
+    ctx.fillText(text, textX, textY);
   };
 
   const selectFont = (e) => {
@@ -118,8 +134,34 @@ function App() {
           value={diplomaHeightCm}
           onChange={(e) => setDiplomaHeightCm(e.target.value)}
         />
-        <button onClick={previewCanvas}>Vista Previa</button>
       </div>
+
+      <div>
+        <label>Ancho del área de texto (cm):</label>
+        <input
+          type="number"
+          value={textAreaWidthCm}
+          onChange={(e) => setTextAreaWidthCm(e.target.value)}
+        />
+        <label>Alto del área de texto (cm):</label>
+        <input
+          type="number"
+          value={textAreaHeightCm}
+          onChange={(e) => setTextAreaHeightCm(e.target.value)}
+        />
+      </div>
+
+      <div>
+        <label>Color de letra:</label>
+        <input
+          type="color"
+          value={textColor}
+          onChange={(e) => setTextColor(e.target.value)}
+        />
+      </div>
+
+      <button onClick={previewCanvas}>Vista Previa</button>
+
 
       <div>
         <canvas ref={canvasRef} style={{ border: '1px solid black' }} />
