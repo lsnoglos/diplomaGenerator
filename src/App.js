@@ -1,10 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 
 function App() {
   const [fontPath, setFontPath] = useState('');
   const [imgPath, setImgPath] = useState('');
   const [listPath, setListPath] = useState('');
   const [namesList, setNamesList] = useState([]);
+
+  const canvasRef = useRef(null);
+
+  const cmToPx = (cm) => (cm * 96) / 2.54;
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+
+    const sizeInPx = cmToPx(5);
+    canvas.width = sizeInPx;
+    canvas.height = sizeInPx;
+
+    ctx.fillStyle = 'red';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }, []);
 
   const selectFont = (e) => {
     const file = e.target.files[0];
@@ -52,7 +68,12 @@ function App() {
         <button>
           <label>
             Seleccione Imagen
-            <input type="file" accept="image/*" onChange={selectBackgroundImage} style={{ display: 'none' }} />
+            <input
+              type="file"
+              accept="image/*"
+              onChange={selectBackgroundImage}
+              style={{ display: 'none' }}
+            />
           </label>
         </button>
         <span>{imgPath ? 'Imagen seleccionada' : 'Seleccione imagen de fondo'}</span>
@@ -68,6 +89,10 @@ function App() {
         <span>{listPath.name || 'Seleccione nombres (separados por coma)'}</span>
       </div>
 
+      <div>
+        <canvas ref={canvasRef} style={{ border: '1px solid black' }} />
+      </div>
+      
     </div>
   );
 }
