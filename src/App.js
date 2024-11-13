@@ -8,19 +8,35 @@ function App() {
 
   const canvasRef = useRef(null);
 
-  const cmToPx = (cm) => (cm * 96) / 2.54;
+  const [diplomaWidthCm, setDiplomaWidthCm] = useState(5);
+  const [diplomaHeightCm, setDiplomaHeightCm] = useState(5);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
 
-    const sizeInPx = cmToPx(5);
+    const sizeInPx = cmToPx(1);
     canvas.width = sizeInPx;
     canvas.height = sizeInPx;
 
-    ctx.fillStyle = 'red';
+    ctx.fillStyle = 'white';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
   }, []);
+
+  const cmToPx = (cm) => (cm * 96) / 2.54;
+
+  const previewCanvas = () => {
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+
+    const widthPx = cmToPx(diplomaWidthCm);
+    const heightPx = cmToPx(diplomaHeightCm);
+    canvas.width = widthPx;
+    canvas.height = heightPx;
+
+    ctx.fillStyle = 'red';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  };
 
   const selectFont = (e) => {
     const file = e.target.files[0];
@@ -90,9 +106,25 @@ function App() {
       </div>
 
       <div>
+        <label>Ancho (cm):</label>
+        <input
+          type="number"
+          value={diplomaWidthCm}
+          onChange={(e) => setDiplomaWidthCm(e.target.value)}
+        />
+        <label>Alto (cm):</label>
+        <input
+          type="number"
+          value={diplomaHeightCm}
+          onChange={(e) => setDiplomaHeightCm(e.target.value)}
+        />
+        <button onClick={previewCanvas}>Vista Previa</button>
+      </div>
+
+      <div>
         <canvas ref={canvasRef} style={{ border: '1px solid black' }} />
       </div>
-      
+
     </div>
   );
 }
