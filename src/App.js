@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import './App.css'
 
 function App() {
   const [fontPath, setFontPath] = useState('');
@@ -8,10 +9,10 @@ function App() {
 
   const canvasRef = useRef(null);
 
-  const [diplomaWidthCm, setDiplomaWidthCm] = useState(5);
+  const [diplomaWidthCm, setDiplomaWidthCm] = useState(8);
   const [diplomaHeightCm, setDiplomaHeightCm] = useState(5);
 
-  const [textColor, setTextColor] = useState('#000000');
+  const [textColor, setTextColor] = useState('#FFF');
   const [textAreaWidthCm, setTextAreaWidthCm] = useState(4);
   const [textAreaHeightCm, setTextAreaHeightCm] = useState(4);
 
@@ -25,9 +26,7 @@ function App() {
   const cmToPx = (cm) => (cm * 96) / 2.54;
 
   const previewCanvas = () => {
-
     console.log(namesList);
-
     let fontSize = 20;
     let textX, textY;
 
@@ -46,7 +45,6 @@ function App() {
 
     console.log(textHeightPx);
 
-    ctx.fillStyle = 'red';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     ctx.fillStyle = textColor;
@@ -86,7 +84,6 @@ function App() {
         textY + index * (fontSize + 5)
       );
     });
-
   };
 
   const selectFont = (e) => {
@@ -118,171 +115,199 @@ function App() {
   };
 
   return (
-    <div>
+    <div className="container">
       <h1>Diploma Generator</h1>
 
-      <div>
-        <button>
-          <label>
-            Seleccione letra
-            <input type="file" accept=".ttf" onChange={selectFont} style={{ display: 'none' }} />
-          </label>
+      <div className="fixed-bar">
+        <button className="generate-button">GENERAR</button>
+        <button className="preview-button" onClick={previewCanvas}>
+          PREVIEW
         </button>
-        <span>{fontPath.name || 'Seleccione tipo de letra'}</span>
       </div>
 
-      <div>
-        <button>
-          <label>
-            Seleccione Imagen
-            <input
-              type="file"
-              accept="image/*"
-              onChange={selectBackgroundImage}
-              style={{ display: 'none' }}
-            />
-          </label>
-        </button>
-        <span>{imgPath ? 'Imagen seleccionada' : 'Seleccione imagen de fondo'}</span>
+      <div className="file-selection">
+        <hr />
+        <h2>Selección de Archivos</h2>
+        <div className="file-item">
+          <button>
+            <label>
+              Seleccione Imagen
+              <input
+                type="file"
+                accept="image/*"
+                onChange={selectBackgroundImage}
+                style={{ display: 'none' }}
+              />
+            </label>
+          </button>
+          <span>{imgPath ? 'Imagen seleccionada' : 'Seleccione imagen de fondo'}</span>
+        </div>
+
+        <div className="file-item">
+          <button>
+            <label>
+              Seleccione letra
+              <input
+                type="file"
+                accept=".ttf"
+                onChange={selectFont}
+                style={{ display: 'none' }}
+              />
+            </label>
+          </button>
+          <span>{fontPath.name || 'Seleccione tipo de letra'}</span>
+        </div>
+
+        <div className="file-item">
+          <button>
+            <label>
+              Seleccione Lista
+              <input
+                type="file"
+                accept=".txt"
+                onChange={selectList}
+                style={{ display: 'none' }}
+              />
+            </label>
+          </button>
+          <span>{listPath.name || 'Seleccione nombres (separados por coma)'}</span>
+        </div>
       </div>
 
-      <div>
-        <button>
-          <label>
-            Seleccione Lista
-            <input type="file" accept=".txt" onChange={selectList} style={{ display: 'none' }} />
-          </label>
-        </button>
-        <span>{listPath.name || 'Seleccione nombres (separados por coma)'}</span>
-      </div>
-
-      <div>
-        <label>Ancho (cm):</label>
-        <input
-          type="number"
-          value={diplomaWidthCm}
-          onChange={(e) => setDiplomaWidthCm(e.target.value)}
-        />
-        <label>Alto (cm):</label>
-        <input
-          type="number"
-          value={diplomaHeightCm}
-          onChange={(e) => setDiplomaHeightCm(e.target.value)}
-        />
-      </div>
-
-      <div>
-        <label>Ancho del área de texto (cm):</label>
-        <input
-          type="number"
-          value={textAreaWidthCm}
-          onChange={(e) => setTextAreaWidthCm(e.target.value)}
-        />
-        <label>Alto del área de texto (cm):</label>
-        <input
-          type="number"
-          value={textAreaHeightCm}
-          onChange={(e) => setTextAreaHeightCm(e.target.value)}
-        />
-      </div>
-
-      <div>
-        <label>Posición X del texto (cm):</label>
-        <input
-          type="number"
-          value={textPosX}
-          onChange={(e) => setTextPosX(e.target.value)}
-          disabled={centerTextArea}
-        />
-        <label>Posición Y del texto (cm):</label>
-        <input
-          type="number"
-          value={textPosY}
-          onChange={(e) => setTextPosY(e.target.value)}
-          disabled={centerTextArea}
-        />
-      </div>
-
-      <div>
-        <label>
+      <div className="dimensions-section">
+        <hr />
+        <h2>Dimensiones del Diploma</h2>
+        <div className="input-group">
+          <label>Ancho (cm):</label>
           <input
-            type="checkbox"
-            checked={centerTextArea}
-            onChange={(e) => setCenterTextArea(e.target.checked)}
+            type="number"
+            value={diplomaWidthCm}
+            onChange={(e) => setDiplomaWidthCm(e.target.value)}
           />
-          Centrar el área de texto en la tarjeta
-        </label>
+          <label>Alto (cm):</label>
+          <input
+            type="number"
+            value={diplomaHeightCm}
+            onChange={(e) => setDiplomaHeightCm(e.target.value)}
+          />
+        </div>
+
+        <div className="input-group">
+          <label>Ancho del área de texto (cm):</label>
+          <input
+            type="number"
+            value={textAreaWidthCm}
+            onChange={(e) => setTextAreaWidthCm(e.target.value)}
+          />
+          <label>Alto del área de texto (cm):</label>
+          <input
+            type="number"
+            value={textAreaHeightCm}
+            onChange={(e) => setTextAreaHeightCm(e.target.value)}
+          />
+        </div>
+
+        <div className="input-group">
+          <label>Posición X del texto (cm):</label>
+          <input
+            type="number"
+            value={textPosX}
+            onChange={(e) => setTextPosX(e.target.value)}
+            disabled={centerTextArea}
+          />
+          <label>Posición Y del texto (cm):</label>
+          <input
+            type="number"
+            value={textPosY}
+            onChange={(e) => setTextPosY(e.target.value)}
+            disabled={centerTextArea}
+          />
+        </div>
       </div>
 
-      <div>
-        <label>Color de letra:</label>
-        <input
-          type="color"
-          value={textColor}
-          onChange={(e) => setTextColor(e.target.value)}
-        />
+      <div className="text-formatting">
+        <hr />
+
+        <h2>Formato de Texto</h2>
+        <div className="checkbox-group">
+          <label>
+            <input
+              type="checkbox"
+              checked={centerTextArea}
+              onChange={(e) => setCenterTextArea(e.target.checked)}
+            />
+            Centrar el área de texto en la tarjeta
+          </label>
+        </div>
+
+        <div className="color-picker">
+          <label>Color del texto:</label>
+          <input
+            type="color"
+            value={textColor}
+            onChange={(e) => setTextColor(e.target.value)}
+          />
+        </div>
+
+        <div className="radio-group">
+          <label>Número de líneas:</label>
+          <label>
+            <input
+              type="radio"
+              value={1}
+              checked={numberOfLines === 1}
+              onChange={() => setNumberOfLines(1)}
+            />
+            1 Línea
+          </label>
+          <label>
+            <input
+              type="radio"
+              value={2}
+              checked={numberOfLines === 2}
+              onChange={() => setNumberOfLines(2)}
+            />
+            2 Líneas
+          </label>
+          <label>
+            <input
+              type="radio"
+              value={3}
+              checked={numberOfLines === 3}
+              onChange={() => setNumberOfLines(3)}
+            />
+            3 Líneas
+          </label>
+        </div>
+
+        <div className="radio-group">
+          <label>Alineación del texto:</label>
+          <label>
+            <input
+              type="radio"
+              value="center"
+              checked={textAlignOption === 'center'}
+              onChange={() => setTextAlignOption('center')}
+            />
+            Centrado
+          </label>
+          <label>
+            <input
+              type="radio"
+              value="left"
+              checked={textAlignOption === 'left'}
+              onChange={() => setTextAlignOption('left')}
+            />
+            Justificado a la izquierda
+          </label>
+        </div>
       </div>
 
-      <div>
-  <label>Número de líneas:</label>
-  <label>
-    <input
-      type="radio"
-      value={1}
-      checked={numberOfLines === 1}
-      onChange={() => setNumberOfLines(1)}
-    />
-    1 Línea
-  </label>
-  <label>
-    <input
-      type="radio"
-      value={2}
-      checked={numberOfLines === 2}
-      onChange={() => setNumberOfLines(2)}
-    />
-    2 Líneas
-  </label>
-  <label>
-    <input
-      type="radio"
-      value={3}
-      checked={numberOfLines === 3}
-      onChange={() => setNumberOfLines(3)}
-    />
-    3 Líneas
-  </label>
-</div>
-
-<div>
-  <label>Alineación del texto:</label>
-  <label>
-    <input
-      type="radio"
-      value="center"
-      checked={textAlignOption === 'center'}
-      onChange={() => setTextAlignOption('center')}
-    />
-    Centrado
-  </label>
-  <label>
-    <input
-      type="radio"
-      value="left"
-      checked={textAlignOption === 'left'}
-      onChange={() => setTextAlignOption('left')}
-    />
-    Justificado a la izquierda
-  </label>
-</div>
-
-      <button onClick={previewCanvas}>Vista Previa</button>
-
-
-      <div>
-        <canvas ref={canvasRef} style={{ border: '1px solid black' }} />
+      <div className="canvas-area">
+        <hr />
+        <h2>Vista Previa del Diploma</h2>
+        <canvas ref={canvasRef} style={{ border: '1px solid '+textColor }} />
       </div>
-
     </div>
   );
 }
