@@ -15,11 +15,16 @@ function App() {
   const [textAreaWidthCm, setTextAreaWidthCm] = useState(4);
   const [textAreaHeightCm, setTextAreaHeightCm] = useState(4);
 
+  const [textPosX, setTextPosX] = useState(0);
+  const [textPosY, setTextPosY] = useState(0);
+  const [centerTextArea, setCenterTextArea] = useState(true);
+
   const cmToPx = (cm) => (cm * 96) / 2.54;
 
   const previewCanvas = () => {
 
     let fontSize = 20;
+    let textX, textY;
 
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
@@ -48,8 +53,13 @@ function App() {
       fontSize--;
     } while (textWidth > textWidthPx && fontSize > 5);
 
-    let textX = canvas.width / 2;
-    let textY = canvas.height / 2;
+    if (centerTextArea) {
+      textX = canvas.width / 2;
+      textY = canvas.height / 2;
+    } else {
+      textX = cmToPx(textPosX);
+      textY = cmToPx(textPosY);
+    }
 
     ctx.fillText(text, textX, textY);
   };
@@ -149,6 +159,34 @@ function App() {
           value={textAreaHeightCm}
           onChange={(e) => setTextAreaHeightCm(e.target.value)}
         />
+      </div>
+
+      <div>
+        <label>Posición X del texto (cm):</label>
+        <input
+          type="number"
+          value={textPosX}
+          onChange={(e) => setTextPosX(e.target.value)}
+          disabled={centerTextArea}
+        />
+        <label>Posición Y del texto (cm):</label>
+        <input
+          type="number"
+          value={textPosY}
+          onChange={(e) => setTextPosY(e.target.value)}
+          disabled={centerTextArea}
+        />
+      </div>
+
+      <div>
+        <label>
+          <input
+            type="checkbox"
+            checked={centerTextArea}
+            onChange={(e) => setCenterTextArea(e.target.checked)}
+          />
+          Centrar el área de texto en la tarjeta
+        </label>
       </div>
 
       <div>
