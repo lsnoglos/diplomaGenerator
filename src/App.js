@@ -19,38 +19,92 @@ function App() {
   const [textPosX, setTextPosX] = useState(0);
   const [textPosY, setTextPosY] = useState(0);
   const [centerTextArea, setCenterTextArea] = useState(true);
+  const [highlightTextArea, setHighlightTextArea] = useState(false);
+  const [previewPrint, setPreviewPrint] = useState(false);
+  const [fillPage, setFillPage] = useState(false);
+  const [pageSize, setPageSize] = useState('carta');
+  const [positionOption, setPositionOption] = useState('center');
+  const [orientation, setOrientation] = useState('horizontal');
 
   const [numberOfLines, setNumberOfLines] = useState(1);
   const [textAlignOption, setTextAlignOption] = useState('center'); // 'center' o 'justify'
 
   const cmToPx = (cm) => (cm * 96) / 2.54;
 
+  const getPageDimensions = (size) => {
+    switch (size) {
+      case 'carta':
+        return { width: cmToPx(21.59), height: cmToPx(27.94) };
+      case 'legal':
+        return { width: cmToPx(21.59), height: cmToPx(35.56) };
+      default:
+        return { width: cmToPx(21.59), height: cmToPx(27.94) };
+    }
+  };
+
   const previewCanvas = () => {
     console.log(namesList);
-    let fontSize = 20;
-    let textX, textY;
-
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
 
-    const widthPx = cmToPx(diplomaWidthCm);
-    const heightPx = cmToPx(diplomaHeightCm);
-    canvas.width = widthPx;
-    canvas.height = heightPx;
+    if (previewPrint) {
+      const { width, height } = getPageDimensions(pageSize);
+      canvas.width = orientation === 'horizontal' ? Math.max(width, height) : Math.min(width, height);
+      canvas.height = orientation === 'horizontal' ? Math.min(width, height) : Math.max(width, height);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    const text = 'Nombre preparado para vista previa';
+      if (fillPage) {
+        const diplomaWidthPx = cmToPx(diplomaWidthCm);
+        const diplomaHeightPx = cmToPx(diplomaHeightCm);
+        const columns = Math.floor(canvas.width / diplomaWidthPx);
+        const rows = Math.floor(canvas.height / diplomaHeightPx);
+
+        for (let row = 0; row < rows; row++) {
+          for (let col = 0; col < columns; col++) {
+            const x = col * diplomaWidthPx;
+            const y = row * diplomaHeightPx;
+            drawDiploma(ctx, x, y, diplomaWidthPx, diplomaHeightPx);
+          }
+        }
+      } else {
+        drawDiploma(ctx, canvas.width / 2 - cmToPx(diplomaWidthCm) / 2, canvas.height / 2 - cmToPx(diplomaHeightCm) / 2, cmToPx(diplomaWidthCm), cmToPx(diplomaHeightCm));
+      }
+    } else {
+      const widthPx = cmToPx(diplomaWidthCm);
+      const heightPx = cmToPx(diplomaHeightCm);
+      canvas.width = widthPx;
+      canvas.height = heightPx;
+      drawDiploma(ctx, 0, 0, widthPx, heightPx);
+    }
+  };
+
+  const drawDiploma = (ctx, x, y, width, height) => {
+    let fontSize = 20;
+    let textX, textY;
+
+    ctx.fillStyle = 'red';
+    ctx.fillRect(x, y, width, height);
 
     const textWidthPx = cmToPx(textAreaWidthCm);
     const textHeightPx = cmToPx(textAreaHeightCm);
 
-    console.log(textHeightPx);
-
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    if (highlightTextArea) {
+      ctx.fillStyle = '#FFD700';
+      ctx.fillRect(
+        x + (centerTextArea ? (width - textWidthPx) / 2 : cmToPx(textPosX)),
+        y + (centerTextArea ? (height - textHeightPx) / 2 : cmToPx(textPosY)),
+        textWidthPx,
+        textHeightPx
+      );
+    }
 
     ctx.fillStyle = textColor;
     ctx.font = '20px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
+
+    const text = 'Nombre preparado para vista previa';
 
     do {
       ctx.font = `${fontSize}px Arial`;
@@ -60,11 +114,11 @@ function App() {
     } while (textWidth > textWidthPx && fontSize > 5);
 
     if (centerTextArea) {
-      textX = canvas.width / 2;
-      textY = canvas.height / 2;
+      textX = x + width / 2;
+      textY = y + height / 2;
     } else {
-      textX = cmToPx(textPosX);
-      textY = cmToPx(textPosY);
+      textX = x + cmToPx(textPosX);
+      textY = y + cmToPx(textPosY);
     }
 
     const words = text.split(' ');
@@ -240,6 +294,17 @@ function App() {
           </label>
         </div>
 
+        <div className="checkbox-group">
+          <label>
+            <input
+              type="checkbox"
+              checked={highlightTextArea}
+              onChange={(e) => setHighlightTextArea(e.target.checked)}
+            />
+            Resaltar área del texto
+          </label>
+        </div>
+
         <div className="color-picker">
           <label>Color del texto:</label>
           <input
@@ -306,7 +371,142 @@ function App() {
       <div className="canvas-area">
         <hr />
         <h2>Vista Previa del Diploma</h2>
-        <canvas ref={canvasRef} style={{ border: '1px solid '+textColor }} />
+        <div className="checkbox-group">
+          <label>
+            <input
+              type="checkbox"
+              checked={previewPrint}
+              onChange={(e) => setPreviewPrint(e.target.checked)}
+            />
+            Previsualizar Impresión
+          </label>
+          {previewPrint && (
+            <div className="select-page-size">
+              <label>Tamaño de página:</label>
+              <select value={pageSize} onChange={(e) => setPageSize(e.target.value)}>
+                <option value="carta">Carta</option>
+                <option value="legal">Legal</option>
+              </select>
+            </div>
+          )}
+        </div>
+        <div className="checkbox-group">
+          <label>
+            <input
+              type="checkbox"
+              checked={fillPage}
+              onChange={(e) => setFillPage(e.target.checked)}
+              disabled={!previewPrint}
+            />
+            Rellenar página
+          </label>
+        </div>
+        <div className="radio-group">
+          <label>Orientación de la página:</label>
+          <label>
+            <input
+              type="radio"
+              value="horizontal"
+              checked={orientation === 'horizontal'}
+              onChange={() => setOrientation('horizontal')}
+            />
+            Horizontal
+          </label>
+          <label>
+            <input
+              type="radio"
+              value="vertical"
+              checked={orientation === 'vertical'}
+              onChange={() => setOrientation('vertical')}
+            />
+            Vertical
+          </label>
+        </div>
+        <div className="radio-group">
+          <label>Posición en la página:</label>
+          <label>
+            <input
+              type="radio"
+              value="center"
+              checked={positionOption === 'center'}
+              onChange={() => setPositionOption('center')}
+            />
+            Centro
+          </label>
+          <label>
+            <input
+              type="radio"
+              value="top"
+              checked={positionOption === 'top'}
+              onChange={() => setPositionOption('top')}
+            />
+            Arriba
+          </label>
+          <label>
+            <input
+              type="radio"
+              value="bottom"
+              checked={positionOption === 'bottom'}
+              onChange={() => setPositionOption('bottom')}
+            />
+            Abajo
+          </label>
+          <label>
+            <input
+              type="radio"
+              value="left"
+              checked={positionOption === 'left'}
+              onChange={() => setPositionOption('left')}
+            />
+            Izquierda
+          </label>
+          <label>
+            <input
+              type="radio"
+              value="right"
+              checked={positionOption === 'right'}
+              onChange={() => setPositionOption('right')}
+            />
+            Derecha
+          </label>
+          <label>
+            <input
+              type="radio"
+              value="top-left"
+              checked={positionOption === 'top-left'}
+              onChange={() => setPositionOption('top-left')}
+            />
+            Superior izquierda
+          </label>
+          <label>
+            <input
+              type="radio"
+              value="top-right"
+              checked={positionOption === 'top-right'}
+              onChange={() => setPositionOption('top-right')}
+            />
+            Superior derecha
+          </label>
+          <label>
+            <input
+              type="radio"
+              value="bottom-left"
+              checked={positionOption === 'bottom-left'}
+              onChange={() => setPositionOption('bottom-left')}
+            />
+            Inferior izquierda
+          </label>
+          <label>
+            <input
+              type="radio"
+              value="bottom-right"
+              checked={positionOption === 'bottom-right'}
+              onChange={() => setPositionOption('bottom-right')}
+            />
+            Inferior derecha
+          </label>
+        </div>
+        <canvas ref={canvasRef} style={{ border: '2px dashed #000' }} />
       </div>
     </div>
   );
