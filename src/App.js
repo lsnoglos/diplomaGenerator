@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 
 function App() {
   const [fontPath, setFontPath] = useState('');
@@ -19,9 +19,14 @@ function App() {
   const [textPosY, setTextPosY] = useState(0);
   const [centerTextArea, setCenterTextArea] = useState(true);
 
+  const [numberOfLines, setNumberOfLines] = useState(1);
+  const [textAlignOption, setTextAlignOption] = useState('center'); // 'center' o 'justify'
+
   const cmToPx = (cm) => (cm * 96) / 2.54;
 
   const previewCanvas = () => {
+
+    console.log(namesList);
 
     let fontSize = 20;
     let textX, textY;
@@ -35,8 +40,11 @@ function App() {
     canvas.height = heightPx;
 
     const text = 'Nombre preparado para vista previa';
+
     const textWidthPx = cmToPx(textAreaWidthCm);
     const textHeightPx = cmToPx(textAreaHeightCm);
+
+    console.log(textHeightPx);
 
     ctx.fillStyle = 'red';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -61,7 +69,24 @@ function App() {
       textY = cmToPx(textPosY);
     }
 
-    ctx.fillText(text, textX, textY);
+    const words = text.split(' ');
+    const lines = [];
+    const wordsPerLine = Math.ceil(words.length / numberOfLines);
+
+    for (let i = 0; i < numberOfLines; i++) {
+      lines.push(words.slice(i * wordsPerLine, (i + 1) * wordsPerLine).join(' '));
+    }
+
+    ctx.textAlign = textAlignOption;
+
+    lines.forEach((line, index) => {
+      ctx.fillText(
+        line,
+        textX,
+        textY + index * (fontSize + 5)
+      );
+    });
+
   };
 
   const selectFont = (e) => {
@@ -197,6 +222,59 @@ function App() {
           onChange={(e) => setTextColor(e.target.value)}
         />
       </div>
+
+      <div>
+  <label>Número de líneas:</label>
+  <label>
+    <input
+      type="radio"
+      value={1}
+      checked={numberOfLines === 1}
+      onChange={() => setNumberOfLines(1)}
+    />
+    1 Línea
+  </label>
+  <label>
+    <input
+      type="radio"
+      value={2}
+      checked={numberOfLines === 2}
+      onChange={() => setNumberOfLines(2)}
+    />
+    2 Líneas
+  </label>
+  <label>
+    <input
+      type="radio"
+      value={3}
+      checked={numberOfLines === 3}
+      onChange={() => setNumberOfLines(3)}
+    />
+    3 Líneas
+  </label>
+</div>
+
+<div>
+  <label>Alineación del texto:</label>
+  <label>
+    <input
+      type="radio"
+      value="center"
+      checked={textAlignOption === 'center'}
+      onChange={() => setTextAlignOption('center')}
+    />
+    Centrado
+  </label>
+  <label>
+    <input
+      type="radio"
+      value="left"
+      checked={textAlignOption === 'left'}
+      onChange={() => setTextAlignOption('left')}
+    />
+    Justificado a la izquierda
+  </label>
+</div>
 
       <button onClick={previewCanvas}>Vista Previa</button>
 
