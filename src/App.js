@@ -21,10 +21,12 @@ function App() {
   const [centerTextArea, setCenterTextArea] = useState(true);
   const [highlightTextArea, setHighlightTextArea] = useState(false);
   const [previewPrint, setPreviewPrint] = useState(false);
-  const [fillPage, setFillPage] = useState(false);
+  const [fillPageMode, setFillPageMode] = useState('automatic');
+  const [manualFillCount, setManualFillCount] = useState(1);
   const [pageSize, setPageSize] = useState('carta');
-  const [positionOption, setPositionOption] = useState('center');
-  const [orientation, setOrientation] = useState('horizontal');
+  const [orientation, setOrientation] = useState('vertical');
+  const [marginMode, setMarginMode] = useState('none');
+  const [manualMargin, setManualMargin] = useState(0);
 
   const [numberOfLines, setNumberOfLines] = useState(1);
   const [textAlignOption, setTextAlignOption] = useState('center'); // 'center' o 'justify'
@@ -54,21 +56,38 @@ function App() {
       ctx.fillStyle = '#FFFFFF';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      if (fillPage) {
-        const diplomaWidthPx = cmToPx(diplomaWidthCm);
-        const diplomaHeightPx = cmToPx(diplomaHeightCm);
-        const columns = Math.floor(canvas.width / diplomaWidthPx);
-        const rows = Math.floor(canvas.height / diplomaHeightPx);
+      const diplomaWidthPx = cmToPx(diplomaWidthCm);
+      const diplomaHeightPx = cmToPx(diplomaHeightCm);
+      let columns, rows;
 
-        for (let row = 0; row < rows; row++) {
-          for (let col = 0; col < columns; col++) {
-            const x = col * diplomaWidthPx;
-            const y = row * diplomaHeightPx;
-            drawDiploma(ctx, x, y, diplomaWidthPx, diplomaHeightPx);
-          }
-        }
+      if (fillPageMode === 'automatic') {
+        columns = Math.floor(canvas.width / diplomaWidthPx);
+        rows = Math.floor(canvas.height / diplomaHeightPx);
       } else {
-        drawDiploma(ctx, canvas.width / 2 - cmToPx(diplomaWidthCm) / 2, canvas.height / 2 - cmToPx(diplomaHeightCm) / 2, cmToPx(diplomaWidthCm), cmToPx(diplomaHeightCm));
+        columns = Math.min(manualFillCount, Math.floor(canvas.width / diplomaWidthPx));
+        rows = Math.ceil(manualFillCount / columns);
+      }
+
+      let marginX = 0, marginY = 0;
+      if (marginMode === 'automatic') {
+        marginX = (canvas.width - columns * diplomaWidthPx) / (columns + 1);
+        marginY = (canvas.height - rows * diplomaHeightPx) / (rows + 1);
+      } else if (marginMode === 'manual') {
+        marginX = cmToPx(manualMargin);
+        marginY = cmToPx(manualMargin);
+      }
+
+      let count = 0;
+      for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < columns; col++) {
+          if (fillPageMode === 'manual' && count >= manualFillCount) {
+            break;
+          }
+          const x = marginX + col * (diplomaWidthPx + marginX);
+          const y = marginY + row * (diplomaHeightPx + marginY);
+          drawDiploma(ctx, x, y, diplomaWidthPx, diplomaHeightPx);
+          count++;
+        }
       }
     } else {
       const widthPx = cmToPx(diplomaWidthCm);
@@ -390,16 +409,37 @@ function App() {
             </div>
           )}
         </div>
-        <div className="checkbox-group">
+        <div className="radio-group">
+          <label>Rellenar página:</label>
           <label>
             <input
-              type="checkbox"
-              checked={fillPage}
-              onChange={(e) => setFillPage(e.target.checked)}
-              disabled={!previewPrint}
+              type="radio"
+              value="automatic"
+              checked={fillPageMode === 'automatic'}
+              onChange={() => setFillPageMode('automatic')}
             />
-            Rellenar página
+            Automático
           </label>
+          <label>
+            <input
+              type="radio"
+              value="manual"
+              checked={fillPageMode === 'manual'}
+              onChange={() => setFillPageMode('manual')}
+            />
+            Manual
+          </label>
+          {fillPageMode === 'manual' && (
+            <div className="input-group">
+              <label>Cantidad de tarjetas:</label>
+              <input
+                type="number"
+                value={manualFillCount}
+                onChange={(e) => setManualFillCount(parseInt(e.target.value, 10) || 1)}
+                min="1"
+              />
+            </div>
+          )}
         </div>
         <div className="radio-group">
           <label>Orientación de la página:</label>
@@ -423,88 +463,45 @@ function App() {
           </label>
         </div>
         <div className="radio-group">
-          <label>Posición en la página:</label>
+          <label>Márgenes:</label>
           <label>
             <input
               type="radio"
-              value="center"
-              checked={positionOption === 'center'}
-              onChange={() => setPositionOption('center')}
+              value="none"
+              checked={marginMode === 'none'}
+              onChange={() => setMarginMode('none')}
             />
-            Centro
+            Sin margen
           </label>
           <label>
             <input
               type="radio"
-              value="top"
-              checked={positionOption === 'top'}
-              onChange={() => setPositionOption('top')}
+              value="automatic"
+              checked={marginMode === 'automatic'}
+              onChange={() => setMarginMode('automatic')}
             />
-            Arriba
+            Márgen automático
           </label>
           <label>
             <input
               type="radio"
-              value="bottom"
-              checked={positionOption === 'bottom'}
-              onChange={() => setPositionOption('bottom')}
+              value="manual"
+              checked={marginMode === 'manual'}
+              onChange={() => setMarginMode('manual')}
             />
-            Abajo
+            Márgen manual
           </label>
-          <label>
-            <input
-              type="radio"
-              value="left"
-              checked={positionOption === 'left'}
-              onChange={() => setPositionOption('left')}
-            />
-            Izquierda
-          </label>
-          <label>
-            <input
-              type="radio"
-              value="right"
-              checked={positionOption === 'right'}
-              onChange={() => setPositionOption('right')}
-            />
-            Derecha
-          </label>
-          <label>
-            <input
-              type="radio"
-              value="top-left"
-              checked={positionOption === 'top-left'}
-              onChange={() => setPositionOption('top-left')}
-            />
-            Superior izquierda
-          </label>
-          <label>
-            <input
-              type="radio"
-              value="top-right"
-              checked={positionOption === 'top-right'}
-              onChange={() => setPositionOption('top-right')}
-            />
-            Superior derecha
-          </label>
-          <label>
-            <input
-              type="radio"
-              value="bottom-left"
-              checked={positionOption === 'bottom-left'}
-              onChange={() => setPositionOption('bottom-left')}
-            />
-            Inferior izquierda
-          </label>
-          <label>
-            <input
-              type="radio"
-              value="bottom-right"
-              checked={positionOption === 'bottom-right'}
-              onChange={() => setPositionOption('bottom-right')}
-            />
-            Inferior derecha
-          </label>
+          {marginMode === 'manual' && (
+            <div className="input-group">
+              <label>Tamaño del márgen (cm):</label>
+              <input
+                type="number"
+                value={manualMargin}
+                onChange={(e) => setManualMargin(e.target.value)}
+                min="0"
+              />
+            </div>
+          )}
         </div>
         <canvas ref={canvasRef} style={{ border: '2px dashed #000' }} />
       </div>
