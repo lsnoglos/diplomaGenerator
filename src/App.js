@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import './App.css'
 
 function App() {
@@ -6,6 +6,11 @@ function App() {
   const [imgPath, setImgPath] = useState('');
   const [listPath, setListPath] = useState('');
   const [namesList, setNamesList] = useState([]);
+  const [newName, setNewName] = useState('');
+  const [selectedNames, setSelectedNames] = useState([]);
+  const [previewMode, setPreviewMode] = useState('prueba'); // 'prueba' o 'lista'
+  const [currentPage, setCurrentPage] = useState(0);
+  const [editIndex, setEditIndex] = useState(null);
 
   const canvasRef = useRef(null);
 
@@ -30,6 +35,10 @@ function App() {
 
   const [numberOfLines, setNumberOfLines] = useState(1);
   const [textAlignOption, setTextAlignOption] = useState('center'); // 'center' o 'justify'
+
+  useEffect(() => {
+    previewCanvas();
+  }, [currentPage, previewMode, namesList]);
 
   const cmToPx = (cm) => (cm * 96) / 2.54;
 
@@ -77,15 +86,18 @@ function App() {
         marginY = cmToPx(manualMargin);
       }
 
-      let count = 0;
+      const enabledNames = namesList.filter(name => name.enabled);
+      let startIndex = currentPage * (columns * rows);
+      let endIndex = Math.min(startIndex + (columns * rows), enabledNames.length);
+      let count = startIndex;
       for (let row = 0; row < rows; row++) {
         for (let col = 0; col < columns; col++) {
-          if (fillPageMode === 'manual' && count >= manualFillCount) {
+          if (count >= endIndex) {
             break;
           }
           const x = marginX + col * (diplomaWidthPx + marginX);
           const y = marginY + row * (diplomaHeightPx + marginY);
-          drawDiploma(ctx, x, y, diplomaWidthPx, diplomaHeightPx);
+          drawDiploma(ctx, x, y, diplomaWidthPx, diplomaHeightPx, enabledNames[count].name);
           count++;
         }
       }
@@ -94,11 +106,13 @@ function App() {
       const heightPx = cmToPx(diplomaHeightCm);
       canvas.width = widthPx;
       canvas.height = heightPx;
-      drawDiploma(ctx, 0, 0, widthPx, heightPx);
+      const enabledNames = namesList.filter(name => name.enabled);
+      const nameToDisplay = enabledNames.length > 0 ? enabledNames[currentPage].name : 'Nombre preparado para vista previa';
+      drawDiploma(ctx, 0, 0, widthPx, heightPx, nameToDisplay);
     }
   };
 
-  const drawDiploma = (ctx, x, y, width, height) => {
+  const drawDiploma = (ctx, x, y, width, height, name) => {
     let fontSize = 20;
     let textX, textY;
 
@@ -123,7 +137,7 @@ function App() {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
-    const text = 'Nombre preparado para vista previa';
+    const text = name;
 
     do {
       ctx.font = `${fontSize}px Arial`;
@@ -180,11 +194,50 @@ function App() {
       const reader = new FileReader();
       reader.onload = (event) => {
         const content = event.target.result;
-        const names = content.split(',').map((name) => name.trim());
+        const names = content.split(',').map((name) => ({ name: name.trim(), enabled: true }));
         setNamesList(names);
       };
       reader.readAsText(file, 'UTF-8');
     }
+  };
+
+  const addName = () => {
+    if (newName.trim() !== '') {
+      if (editIndex !== null) {
+        const updatedNames = [...namesList];
+        updatedNames[editIndex].name = newName.trim();
+        setNamesList(updatedNames);
+        setEditIndex(null);
+      } else {
+        setNamesList([...namesList, { name: newName.trim(), enabled: true }]);
+      }
+      setNewName('');
+    }
+  };
+
+  const toggleName = (index) => {
+    const updatedNames = [...namesList];
+    updatedNames[index].enabled = !updatedNames[index].enabled;
+    setNamesList(updatedNames);
+  };
+
+  const handlePageNavigation = (action) => {
+    const enabledNames = namesList.filter(name => name.enabled);
+    const totalPages = Math.ceil(enabledNames.length / 10);
+    if (action === 'first') {
+      setCurrentPage(0);
+    } else if (action === 'prev' && currentPage > 0) {
+      setCurrentPage(currentPage - 1);
+    } else if (action === 'next' && currentPage < totalPages - 1) {
+      setCurrentPage(currentPage + 1);
+    } else if (action === 'last') {
+      setCurrentPage(totalPages - 1);
+    }
+  };
+
+  const editName = (index) => {
+    setNewName(namesList[index].name);
+    setEditIndex(index);
   };
 
   return (
@@ -244,6 +297,30 @@ function App() {
             </label>
           </button>
           <span>{listPath.name || 'Seleccione nombres (separados por coma)'}</span>
+        </div>
+
+        <div className="names-list">
+          <h3>Lista de Nombres</h3>
+          <div className="manual-names">
+            <input
+              type="text"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              placeholder="Añadir nombre"
+            />
+            <button onClick={addName}>{editIndex !== null ? 'Guardar' : 'Añadir'}</button>
+          </div>
+          {namesList.map((name, index) => (
+            <div key={index} className="names-list-item">
+              <input
+                type="checkbox"
+                checked={name.enabled}
+                onChange={() => toggleName(index)}
+              />
+              <span className="name-text">{name.name}</span>
+              <button onClick={() => editName(index)} className="edit-button">Editar</button>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -310,17 +387,6 @@ function App() {
               onChange={(e) => setCenterTextArea(e.target.checked)}
             />
             Centrar el área de texto en la tarjeta
-          </label>
-        </div>
-
-        <div className="checkbox-group">
-          <label>
-            <input
-              type="checkbox"
-              checked={highlightTextArea}
-              onChange={(e) => setHighlightTextArea(e.target.checked)}
-            />
-            Resaltar área del texto
           </label>
         </div>
 
@@ -409,6 +475,18 @@ function App() {
             </div>
           )}
         </div>
+
+        <div className="checkbox-group">
+          <label>
+            <input
+              type="checkbox"
+              checked={highlightTextArea}
+              onChange={(e) => setHighlightTextArea(e.target.checked)}
+            />
+            Resaltar área del texto
+          </label>
+        </div>
+
         <div className="radio-group">
           <label>Rellenar página:</label>
           <label>
@@ -503,7 +581,37 @@ function App() {
             </div>
           )}
         </div>
+
+        <div className="radio-group">
+          <label>Modo de Vista Previa:</label>
+          <label>
+            <input
+              type="radio"
+              value="prueba"
+              checked={previewMode === 'prueba'}
+              onChange={() => setPreviewMode('prueba')}
+            />
+            Visualizar Prueba
+          </label>
+          <label>
+            <input
+              type="radio"
+              value="lista"
+              checked={previewMode === 'lista'}
+              onChange={() => setPreviewMode('lista')}
+            />
+            Visualizar Lista
+          </label>
+        </div>
+
         <canvas ref={canvasRef} style={{ border: '2px dashed #000' }} />
+
+        <div className="navigation-buttons">
+          <button onClick={() => handlePageNavigation('first')} disabled={currentPage === 0}>{'<<'}</button>
+          <button onClick={() => handlePageNavigation('prev')} disabled={currentPage === 0}>{'<'}</button>
+          <button onClick={() => handlePageNavigation('next')} disabled={currentPage >= Math.ceil(namesList.filter(name => name.enabled).length / 10) - 1}>{'>'}</button>
+          <button onClick={() => handlePageNavigation('last')} disabled={currentPage >= Math.ceil(namesList.filter(name => name.enabled).length / 10) - 1}>{'>>'}</button>
+        </div>
       </div>
     </div>
   );

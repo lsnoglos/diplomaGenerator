@@ -101,3 +101,48 @@ h2 {
   background-color: rgb(210, 210, 210);
   padding: 5px;
 }
+
+.names-list {
+  margin-top: 20px;
+}
+
+.names-list-item {
+  display: flex;
+  align-items: center;
+  padding: 2px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  margin-bottom: 2px;
+  background-color: #f9f9f9;
+}
+
+.names-list-item input[type="checkbox"] {
+  margin-right: 15px;
+}
+
+.names-list-item span {
+  flex: 1;
+  font-size: 16px;
+}
+
+.names-list-item button {
+  padding: 5px 10px;
+  background-color: #617799;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.names-list-item button:hover {
+  background-color: #4a6481;
+}
+
+.manual-names {
+  display: flex;
+  align-items: center;
+  padding: 2px;
+  border-radius: 5px;
+  margin-bottom: 15px;
+}
