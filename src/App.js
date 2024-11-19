@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import './App.css'
+import './App.css';
+import interact from 'interactjs';
 
 function App() {
   const [fontPath, setFontPath] = useState('');
@@ -7,7 +8,6 @@ function App() {
   const [listPath, setListPath] = useState('');
   const [namesList, setNamesList] = useState([]);
   const [newName, setNewName] = useState('');
-  const [selectedNames, setSelectedNames] = useState([]);
   const [previewMode, setPreviewMode] = useState('prueba'); // 'prueba' o 'lista'
   const [currentPage, setCurrentPage] = useState(0);
   const [editIndex, setEditIndex] = useState(null);
@@ -16,16 +16,16 @@ function App() {
 
   const [diplomaWidthCm, setDiplomaWidthCm] = useState(8);
   const [diplomaHeightCm, setDiplomaHeightCm] = useState(5);
+  const [diplomaBgColor, setDiplomaBgColor] = useState('#87CEEB');
 
-  const [textColor, setTextColor] = useState('#FFF');
+  const [textColor, setTextColor] = useState('#000');
   const [textAreaWidthCm, setTextAreaWidthCm] = useState(4);
   const [textAreaHeightCm, setTextAreaHeightCm] = useState(4);
 
   const [textPosX, setTextPosX] = useState(0);
   const [textPosY, setTextPosY] = useState(0);
-  const [centerTextArea, setCenterTextArea] = useState(true);
+  const [centerTextArea, setCenterTextArea] = useState(false);
   const [highlightTextArea, setHighlightTextArea] = useState(false);
-  const [previewPrint, setPreviewPrint] = useState(false);
   const [fillPageMode, setFillPageMode] = useState('automatic');
   const [manualFillCount, setManualFillCount] = useState(1);
   const [pageSize, setPageSize] = useState('carta');
@@ -34,13 +34,148 @@ function App() {
   const [manualMargin, setManualMargin] = useState(0);
 
   const [numberOfLines, setNumberOfLines] = useState(1);
-  const [textAlignOption, setTextAlignOption] = useState('center'); // 'center' o 'justify'
+  const [textAlignOption, setTextAlignOption] = useState('center'); // 'center', 'justify', 'right'
+  const [exampleText, setExampleText] = useState('Nombre de Ejemplo');
+  const resizableBoxRef = useRef(null);
+  const textBoxRef = useRef(null);
 
   useEffect(() => {
     previewCanvas();
-  }, [currentPage, previewMode, namesList]);
+    // eslint-disable-next-line
+  }, [
+    currentPage,
+    previewMode,
+    namesList,
+    diplomaWidthCm,
+    diplomaHeightCm,
+    textAreaWidthCm,
+    textAreaHeightCm,
+    textPosX,
+    textPosY,
+    exampleText,
+    imgPath,
+    textAlignOption,
+    numberOfLines,
+    centerTextArea,
+    pageSize,
+    orientation,
+    marginMode,
+    manualMargin,
+    fillPageMode,
+    manualFillCount,
+    highlightTextArea,
+    textColor,
+    diplomaBgColor,
+  ]);
+
+  useEffect(() => {
+    interact(resizableBoxRef.current).unset();
+    interact(textBoxRef.current).unset();
+
+    interact(resizableBoxRef.current)
+      .resizable({
+        edges: { left: true, right: true, bottom: true, top: true },
+        listeners: {
+          move(event) {
+            const target = event.target;
+            let x = parseFloat(target.getAttribute('data-x')) || 0;
+            let y = parseFloat(target.getAttribute('data-y')) || 0;
+
+            target.style.width = `${event.rect.width}px`;
+            target.style.height = `${event.rect.height}px`;
+
+            x += event.deltaRect.left;
+            y += event.deltaRect.top;
+
+            target.style.transform = `translate(${x}px, ${y}px)`;
+
+            target.setAttribute('data-x', x);
+            target.setAttribute('data-y', y);
+
+            setDiplomaWidthCm(pxToCm(event.rect.width));
+            setDiplomaHeightCm(pxToCm(event.rect.height));
+          },
+        },
+        modifiers: [
+          interact.modifiers.restrictSize({
+            min: { width: 50, height: 50 },
+          }),
+        ],
+      });
+
+    interact(textBoxRef.current)
+      .resizable({
+        edges: { left: true, right: true, bottom: true, top: true },
+        listeners: {
+          move(event) {
+            const target = event.target;
+            let x = parseFloat(target.getAttribute('data-x')) || 0;
+            let y = parseFloat(target.getAttribute('data-y')) || 0;
+
+            target.style.width = `${event.rect.width}px`;
+            target.style.height = `${event.rect.height}px`;
+
+            x += event.deltaRect.left;
+            y += event.deltaRect.top;
+
+            target.style.transform = `translate(${x}px, ${y}px)`;
+
+            target.setAttribute('data-x', x);
+            target.setAttribute('data-y', y);
+
+            setTextAreaWidthCm(pxToCm(event.rect.width));
+            setTextAreaHeightCm(pxToCm(event.rect.height));
+            setTextPosX(pxToCm(x));
+            setTextPosY(pxToCm(y));
+
+            if (centerTextArea) {
+              x = (cmToPx(diplomaWidthCm) - event.rect.width) / 2;
+              y = (cmToPx(diplomaHeightCm) - event.rect.height) / 2;
+              target.style.transform = `translate(${x}px, ${y}px)`;
+              target.setAttribute('data-x', x);
+              target.setAttribute('data-y', y);
+              setTextPosX(pxToCm(x));
+              setTextPosY(pxToCm(y));
+            }
+          },
+        },
+        modifiers: [
+          interact.modifiers.restrictSize({
+            min: { width: 50, height: 50 },
+          }),
+        ],
+      })
+      .draggable({
+        listeners: {
+          move(event) {
+            if (!centerTextArea) {
+              const target = event.target;
+              const x =
+                (parseFloat(target.getAttribute('data-x')) || 0) + event.dx;
+              const y =
+                (parseFloat(target.getAttribute('data-y')) || 0) + event.dy;
+
+              target.style.transform = `translate(${x}px, ${y}px)`;
+
+              target.setAttribute('data-x', x);
+              target.setAttribute('data-y', y);
+
+              setTextPosX(pxToCm(x));
+              setTextPosY(pxToCm(y));
+            }
+          },
+        },
+      });
+  }, [
+    centerTextArea,
+    textAreaWidthCm,
+    textAreaHeightCm,
+    diplomaWidthCm,
+    diplomaHeightCm,
+  ]);
 
   const cmToPx = (cm) => (cm * 96) / 2.54;
+  const pxToCm = (px) => (px * 2.54) / 96;
 
   const getPageDimensions = (size) => {
     switch (size) {
@@ -54,41 +189,47 @@ function App() {
   };
 
   const previewCanvas = () => {
-    console.log(namesList);
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
 
-    if (previewPrint) {
-      const { width, height } = getPageDimensions(pageSize);
-      canvas.width = orientation === 'horizontal' ? Math.max(width, height) : Math.min(width, height);
-      canvas.height = orientation === 'horizontal' ? Math.min(width, height) : Math.max(width, height);
-      ctx.fillStyle = '#FFFFFF';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const { width, height } = getPageDimensions(pageSize);
+    canvas.width =
+      orientation === 'horizontal' ? Math.max(width, height) : Math.min(width, height);
+    canvas.height =
+      orientation === 'horizontal' ? Math.min(width, height) : Math.max(width, height);
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      const diplomaWidthPx = cmToPx(diplomaWidthCm);
-      const diplomaHeightPx = cmToPx(diplomaHeightCm);
-      let columns, rows;
+    const diplomaWidthPx = cmToPx(diplomaWidthCm);
+    const diplomaHeightPx = cmToPx(diplomaHeightCm);
+    let columns, rows;
 
-      if (fillPageMode === 'automatic') {
-        columns = Math.floor(canvas.width / diplomaWidthPx);
-        rows = Math.floor(canvas.height / diplomaHeightPx);
-      } else {
-        columns = Math.min(manualFillCount, Math.floor(canvas.width / diplomaWidthPx));
-        rows = Math.ceil(manualFillCount / columns);
-      }
+    if (fillPageMode === 'automatic') {
+      columns = Math.floor(canvas.width / diplomaWidthPx);
+      rows = Math.floor(canvas.height / diplomaHeightPx);
+    } else {
+      columns = Math.min(manualFillCount, Math.floor(canvas.width / diplomaWidthPx));
+      rows = Math.ceil(manualFillCount / columns);
+    }
 
-      let marginX = 0, marginY = 0;
-      if (marginMode === 'automatic') {
-        marginX = (canvas.width - columns * diplomaWidthPx) / (columns + 1);
-        marginY = (canvas.height - rows * diplomaHeightPx) / (rows + 1);
-      } else if (marginMode === 'manual') {
-        marginX = cmToPx(manualMargin);
-        marginY = cmToPx(manualMargin);
-      }
+    let marginX = 0,
+      marginY = 0;
+    if (marginMode === 'automatic') {
+      marginX = (canvas.width - columns * diplomaWidthPx) / (columns + 1);
+      marginY = (canvas.height - rows * diplomaHeightPx) / (rows + 1);
+    } else if (marginMode === 'manual') {
+      marginX = cmToPx(manualMargin);
+      marginY = cmToPx(manualMargin);
+    }
 
-      const enabledNames = namesList.filter(name => name.enabled);
+    if (previewMode === 'prueba') {
+      const x = marginX + (canvas.width - diplomaWidthPx) / 2;
+      const y = marginY + (canvas.height - diplomaHeightPx) / 2;
+      drawDiploma(ctx, x, y, diplomaWidthPx, diplomaHeightPx, exampleText);
+    } else if (previewMode === 'lista') {
+      const enabledNames = namesList.filter((name) => name.enabled);
       let startIndex = currentPage * (columns * rows);
-      let endIndex = Math.min(startIndex + (columns * rows), enabledNames.length);
+      let endIndex = Math.min(startIndex + columns * rows, enabledNames.length);
       let count = startIndex;
       for (let row = 0; row < rows; row++) {
         for (let col = 0; col < columns; col++) {
@@ -101,76 +242,63 @@ function App() {
           count++;
         }
       }
-    } else {
-      const widthPx = cmToPx(diplomaWidthCm);
-      const heightPx = cmToPx(diplomaHeightCm);
-      canvas.width = widthPx;
-      canvas.height = heightPx;
-      const enabledNames = namesList.filter(name => name.enabled);
-      const nameToDisplay = enabledNames.length > 0 ? enabledNames[currentPage].name : 'Nombre preparado para vista previa';
-      drawDiploma(ctx, 0, 0, widthPx, heightPx, nameToDisplay);
     }
   };
 
   const drawDiploma = (ctx, x, y, width, height, name) => {
     let fontSize = 20;
-    let textX, textY;
 
-    ctx.fillStyle = 'red';
-    ctx.fillRect(x, y, width, height);
-
-    const textWidthPx = cmToPx(textAreaWidthCm);
-    const textHeightPx = cmToPx(textAreaHeightCm);
-
-    if (highlightTextArea) {
-      ctx.fillStyle = '#FFD700';
-      ctx.fillRect(
-        x + (centerTextArea ? (width - textWidthPx) / 2 : cmToPx(textPosX)),
-        y + (centerTextArea ? (height - textHeightPx) / 2 : cmToPx(textPosY)),
-        textWidthPx,
-        textHeightPx
-      );
-    }
-
-    ctx.fillStyle = textColor;
-    ctx.font = '20px Arial';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-
-    const text = name;
-
-    do {
-      ctx.font = `${fontSize}px Arial`;
-      var metrics = ctx.measureText(text);
-      var textWidth = metrics.width;
-      fontSize--;
-    } while (textWidth > textWidthPx && fontSize > 5);
-
-    if (centerTextArea) {
-      textX = x + width / 2;
-      textY = y + height / 2;
+    if (imgPath) {
+      const img = new Image();
+      img.src = imgPath;
+      img.onload = () => {
+        ctx.drawImage(img, x, y, width, height);
+        drawText();
+      };
     } else {
-      textX = x + cmToPx(textPosX);
-      textY = y + cmToPx(textPosY);
+      ctx.fillStyle = diplomaBgColor;
+      ctx.fillRect(x, y, width, height);
+      drawText();
     }
 
-    const words = text.split(' ');
-    const lines = [];
-    const wordsPerLine = Math.ceil(words.length / numberOfLines);
+    function drawText() {
+      const textWidthPx = cmToPx(textAreaWidthCm);
+      const textHeightPx = cmToPx(textAreaHeightCm);
 
-    for (let i = 0; i < numberOfLines; i++) {
-      lines.push(words.slice(i * wordsPerLine, (i + 1) * wordsPerLine).join(' '));
+      if (highlightTextArea) {
+        ctx.fillStyle = 'rgba(255, 215, 0, 0.5)';
+        ctx.fillRect(
+          x + (centerTextArea ? (width - textWidthPx) / 2 : cmToPx(textPosX)),
+          y + (centerTextArea ? (height - textHeightPx) / 2 : cmToPx(textPosY)),
+          textWidthPx,
+          textHeightPx
+        );
+      }
+
+      ctx.fillStyle = textColor;
+      ctx.font = `${fontSize}px Arial`;
+      ctx.textAlign = textAlignOption;
+      ctx.textBaseline = 'top';
+
+      const words = name.split(' ');
+      const lines = [];
+      const wordsPerLine = Math.ceil(words.length / numberOfLines);
+
+      for (let i = 0; i < numberOfLines; i++) {
+        lines.push(words.slice(i * wordsPerLine, (i + 1) * wordsPerLine).join(' '));
+      }
+
+      lines.forEach((line, index) => {
+        ctx.fillText(
+          line,
+          x +
+          (centerTextArea
+            ? width / 2
+            : cmToPx(textPosX) + (textAlignOption === 'center' ? textWidthPx / 2 : 0)),
+          y + (centerTextArea ? (height - textHeightPx) / 2 : cmToPx(textPosY)) + index * (fontSize + 5)
+        );
+      });
     }
-
-    ctx.textAlign = textAlignOption;
-
-    lines.forEach((line, index) => {
-      ctx.fillText(
-        line,
-        textX,
-        textY + index * (fontSize + 5)
-      );
-    });
   };
 
   const selectFont = (e) => {
@@ -222,7 +350,7 @@ function App() {
   };
 
   const handlePageNavigation = (action) => {
-    const enabledNames = namesList.filter(name => name.enabled);
+    const enabledNames = namesList.filter((name) => name.enabled);
     const totalPages = Math.ceil(enabledNames.length / 10);
     if (action === 'first') {
       setCurrentPage(0);
@@ -246,9 +374,6 @@ function App() {
 
       <div className="fixed-bar">
         <button className="generate-button">GENERAR</button>
-        <button className="preview-button" onClick={previewCanvas}>
-          PREVIEW
-        </button>
       </div>
 
       <div className="file-selection">
@@ -318,7 +443,9 @@ function App() {
                 onChange={() => toggleName(index)}
               />
               <span className="name-text">{name.name}</span>
-              <button onClick={() => editName(index)} className="edit-button">Editar</button>
+              <button onClick={() => editName(index)} className="edit-button">
+                Editar
+              </button>
             </div>
           ))}
         </div>
@@ -326,165 +453,237 @@ function App() {
 
       <div className="dimensions-section">
         <hr />
-        <h2>Dimensiones del Diploma</h2>
-        <div className="input-group">
-          <label>Ancho (cm):</label>
-          <input
-            type="number"
-            value={diplomaWidthCm}
-            onChange={(e) => setDiplomaWidthCm(e.target.value)}
-          />
-          <label>Alto (cm):</label>
-          <input
-            type="number"
-            value={diplomaHeightCm}
-            onChange={(e) => setDiplomaHeightCm(e.target.value)}
-          />
-        </div>
+        <h2>Ajustes del Diploma</h2>
 
-        <div className="input-group">
-          <label>Ancho del área de texto (cm):</label>
-          <input
-            type="number"
-            value={textAreaWidthCm}
-            onChange={(e) => setTextAreaWidthCm(e.target.value)}
-          />
-          <label>Alto del área de texto (cm):</label>
-          <input
-            type="number"
-            value={textAreaHeightCm}
-            onChange={(e) => setTextAreaHeightCm(e.target.value)}
-          />
-        </div>
+        <div className="manual-resize-container">
+          <div className="checkbox-group">
+            <label>
+              <input
+                type="checkbox"
+                checked={centerTextArea}
+                onChange={(e) => setCenterTextArea(e.target.checked)}
+              />
+              Centrar el área de texto en la tarjeta
+            </label>
+          </div>
 
-        <div className="input-group">
-          <label>Posición X del texto (cm):</label>
-          <input
-            type="number"
-            value={textPosX}
-            onChange={(e) => setTextPosX(e.target.value)}
-            disabled={centerTextArea}
-          />
-          <label>Posición Y del texto (cm):</label>
-          <input
-            type="number"
-            value={textPosY}
-            onChange={(e) => setTextPosY(e.target.value)}
-            disabled={centerTextArea}
-          />
-        </div>
-      </div>
+          <div className="checkbox-group">
+            <label>
+              <input
+                type="checkbox"
+                checked={highlightTextArea}
+                onChange={(e) => setHighlightTextArea(e.target.checked)}
+              />
+              Resaltar área del texto
+            </label>
+          </div>
 
-      <div className="text-formatting">
-        <hr />
-
-        <h2>Formato de Texto</h2>
-        <div className="checkbox-group">
-          <label>
+          <div className="color-picker">
+            <label>Color del texto:</label>
             <input
-              type="checkbox"
-              checked={centerTextArea}
-              onChange={(e) => setCenterTextArea(e.target.checked)}
+              type="color"
+              value={textColor}
+              onChange={(e) => setTextColor(e.target.value)}
             />
-            Centrar el área de texto en la tarjeta
-          </label>
-        </div>
+          </div>
 
-        <div className="color-picker">
-          <label>Color del texto:</label>
-          <input
-            type="color"
-            value={textColor}
-            onChange={(e) => setTextColor(e.target.value)}
-          />
-        </div>
+          <div className="color-picker">
+            <label>Color de fondo del diploma:</label>
+            <input
+              type="color"
+              value={diplomaBgColor}
+              onChange={(e) => setDiplomaBgColor(e.target.value)}
+              disabled={imgPath !== ''}
+            />
+          </div>
 
-        <div className="radio-group">
-          <label>Número de líneas:</label>
-          <label>
-            <input
-              type="radio"
-              value={1}
-              checked={numberOfLines === 1}
-              onChange={() => setNumberOfLines(1)}
-            />
-            1 Línea
-          </label>
-          <label>
-            <input
-              type="radio"
-              value={2}
-              checked={numberOfLines === 2}
-              onChange={() => setNumberOfLines(2)}
-            />
-            2 Líneas
-          </label>
-          <label>
-            <input
-              type="radio"
-              value={3}
-              checked={numberOfLines === 3}
-              onChange={() => setNumberOfLines(3)}
-            />
-            3 Líneas
-          </label>
-        </div>
+          <div className="radio-group">
+            <label>Alineación del texto:</label>
 
-        <div className="radio-group">
-          <label>Alineación del texto:</label>
-          <label>
+            <label>
+              <input
+                type="radio"
+                value="left"
+                checked={textAlignOption === 'left'}
+                onChange={() => setTextAlignOption('left')}
+              />
+              Izquierda
+            </label>
+            <label>
+              <input
+                type="radio"
+                value="center"
+                checked={textAlignOption === 'center'}
+                onChange={() => setTextAlignOption('center')}
+              />
+              Centrado
+            </label>
+            <label>
+              <input
+                type="radio"
+                value="right"
+                checked={textAlignOption === 'right'}
+                onChange={() => setTextAlignOption('right')}
+              />
+              Derecha
+            </label>
+          </div>
+
+          <div className="radio-group">
+            <label>Número de líneas:</label>
+            <label>
+              <input
+                type="radio"
+                value={1}
+                checked={numberOfLines === 1}
+                onChange={() => setNumberOfLines(1)}
+              />
+              1 Línea
+            </label>
+            <label>
+              <input
+                type="radio"
+                value={2}
+                checked={numberOfLines === 2}
+                onChange={() => setNumberOfLines(2)}
+              />
+              2 Líneas
+            </label>
+            <label>
+              <input
+                type="radio"
+                value={3}
+                checked={numberOfLines === 3}
+                onChange={() => setNumberOfLines(3)}
+              />
+              3 Líneas
+            </label>
+          </div>
+
+          <div
+            ref={resizableBoxRef}
+            className="resizable-box"
+            style={{
+              backgroundColor: diplomaBgColor,
+              width: `${cmToPx(diplomaWidthCm)}px`,
+              height: `${cmToPx(diplomaHeightCm)}px`,
+              margin: '0 auto',
+            }}
+          >
+            <div
+              ref={textBoxRef}
+              className="text-box"
+              data-x="0"
+              data-y="0"
+              style={{
+                backgroundColor: highlightTextArea ? '#FFD700' : 'transparent',
+                width: `${cmToPx(textAreaWidthCm)}px`,
+                height: `${cmToPx(textAreaHeightCm)}px`,
+                color: textColor,
+                textAlign: textAlignOption,
+                transform: centerTextArea
+                  ? `translate(${(cmToPx(diplomaWidthCm) - cmToPx(textAreaWidthCm)) / 2
+                  }px, ${(cmToPx(diplomaHeightCm) - cmToPx(textAreaHeightCm)) / 2
+                  }px)`
+                  : `translate(${cmToPx(textPosX)}px, ${cmToPx(textPosY)}px)`,
+              }}
+              onDoubleClick={(e) => {
+                e.stopPropagation();
+                const newText = prompt('Ingrese el texto de ejemplo:', exampleText);
+                if (newText !== null) {
+                  setExampleText(newText);
+                }
+              }}
+            >
+              {exampleText
+                .split(' ')
+                .reduce((resultArray, word, index) => {
+                  const chunkIndex = Math.floor(
+                    index / Math.ceil(exampleText.split(' ').length / numberOfLines)
+                  );
+                  if (!resultArray[chunkIndex]) {
+                    resultArray[chunkIndex] = '';
+                  }
+                  resultArray[chunkIndex] += (resultArray[chunkIndex] ? ' ' : '') + word;
+                  return resultArray;
+                }, [])
+                .map((line, index) => (
+                  <div key={index}>{line}</div>
+                ))}
+            </div>
+          </div>
+
+          <br />
+          <div className="input-group">
+            <label>Ancho (cm):</label>
             <input
-              type="radio"
-              value="center"
-              checked={textAlignOption === 'center'}
-              onChange={() => setTextAlignOption('center')}
+              type="number"
+              value={diplomaWidthCm}
+              onChange={(e) => setDiplomaWidthCm(parseFloat(e.target.value) || 0)}
             />
-            Centrado
-          </label>
-          <label>
+            <label>Alto (cm):</label>
             <input
-              type="radio"
-              value="left"
-              checked={textAlignOption === 'left'}
-              onChange={() => setTextAlignOption('left')}
+              type="number"
+              value={diplomaHeightCm}
+              onChange={(e) => setDiplomaHeightCm(parseFloat(e.target.value) || 0)}
             />
-            Justificado a la izquierda
-          </label>
+
+            <label>Ancho del área de texto (cm):</label>
+            <input
+              type="number"
+              value={textAreaWidthCm}
+              onChange={(e) => {
+                const newValue = parseFloat(e.target.value) || 0;
+                setTextAreaWidthCm(newValue);
+                if (centerTextArea) {
+                  setTextPosX((diplomaWidthCm - newValue) / 2);
+                }
+              }}
+            />
+            <label>Alto del área de texto (cm):</label>
+            <input
+              type="number"
+              value={textAreaHeightCm}
+              onChange={(e) => {
+                const newValue = parseFloat(e.target.value) || 0;
+                setTextAreaHeightCm(newValue);
+                if (centerTextArea) {
+                  setTextPosY((diplomaHeightCm - newValue) / 2);
+                }
+              }}
+            />
+
+            <label>Posición X del texto (cm):</label>
+            <input
+              type="number"
+              value={textPosX}
+              onChange={(e) => setTextPosX(parseFloat(e.target.value) || 0)}
+              disabled={centerTextArea}
+            />
+            <label>Posición Y del texto (cm):</label>
+            <input
+              type="number"
+              value={textPosY}
+              onChange={(e) => setTextPosY(parseFloat(e.target.value) || 0)}
+              disabled={centerTextArea}
+            />
+          </div>
         </div>
       </div>
 
       <div className="canvas-area">
         <hr />
         <h2>Vista Previa del Diploma</h2>
-        <div className="checkbox-group">
-          <label>
-            <input
-              type="checkbox"
-              checked={previewPrint}
-              onChange={(e) => setPreviewPrint(e.target.checked)}
-            />
-            Previsualizar Impresión
-          </label>
-          {previewPrint && (
-            <div className="select-page-size">
-              <label>Tamaño de página:</label>
-              <select value={pageSize} onChange={(e) => setPageSize(e.target.value)}>
-                <option value="carta">Carta</option>
-                <option value="legal">Legal</option>
-              </select>
-            </div>
-          )}
-        </div>
 
-        <div className="checkbox-group">
-          <label>
-            <input
-              type="checkbox"
-              checked={highlightTextArea}
-              onChange={(e) => setHighlightTextArea(e.target.checked)}
-            />
-            Resaltar área del texto
-          </label>
+        <div className="select-page-size">
+          <label>Tamaño de página:</label>
+          <select
+            value={pageSize}
+            onChange={(e) => setPageSize(e.target.value)}
+          >
+            <option value="carta">Carta</option>
+            <option value="legal">Legal</option>
+          </select>
         </div>
 
         <div className="radio-group">
@@ -513,7 +712,9 @@ function App() {
               <input
                 type="number"
                 value={manualFillCount}
-                onChange={(e) => setManualFillCount(parseInt(e.target.value, 10) || 1)}
+                onChange={(e) =>
+                  setManualFillCount(parseInt(e.target.value, 10) || 1)
+                }
                 min="1"
               />
             </div>
@@ -575,7 +776,7 @@ function App() {
               <input
                 type="number"
                 value={manualMargin}
-                onChange={(e) => setManualMargin(e.target.value)}
+                onChange={(e) => setManualMargin(parseFloat(e.target.value) || 0)}
                 min="0"
               />
             </div>
@@ -607,10 +808,36 @@ function App() {
         <canvas ref={canvasRef} style={{ border: '2px dashed #000' }} />
 
         <div className="navigation-buttons">
-          <button onClick={() => handlePageNavigation('first')} disabled={currentPage === 0}>{'<<'}</button>
-          <button onClick={() => handlePageNavigation('prev')} disabled={currentPage === 0}>{'<'}</button>
-          <button onClick={() => handlePageNavigation('next')} disabled={currentPage >= Math.ceil(namesList.filter(name => name.enabled).length / 10) - 1}>{'>'}</button>
-          <button onClick={() => handlePageNavigation('last')} disabled={currentPage >= Math.ceil(namesList.filter(name => name.enabled).length / 10) - 1}>{'>>'}</button>
+          <button
+            onClick={() => handlePageNavigation('first')}
+            disabled={currentPage === 0}
+          >
+            {'<<'}
+          </button>
+          <button
+            onClick={() => handlePageNavigation('prev')}
+            disabled={currentPage === 0}
+          >
+            {'<'}
+          </button>
+          <button
+            onClick={() => handlePageNavigation('next')}
+            disabled={
+              currentPage >=
+              Math.ceil(namesList.filter((name) => name.enabled).length / 10) - 1
+            }
+          >
+            {'>'}
+          </button>
+          <button
+            onClick={() => handlePageNavigation('last')}
+            disabled={
+              currentPage >=
+              Math.ceil(namesList.filter((name) => name.enabled).length / 10) - 1
+            }
+          >
+            {'>>'}
+          </button>
         </div>
       </div>
     </div>
