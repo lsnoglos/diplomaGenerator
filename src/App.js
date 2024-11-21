@@ -4,11 +4,12 @@ import interact from 'interactjs';
 
 function App() {
   const [fontPath, setFontPath] = useState('');
+  const [fontFamily, setFontFamily] = useState('Arial');
   const [imgPath, setImgPath] = useState('');
   const [listPath, setListPath] = useState('');
   const [namesList, setNamesList] = useState([]);
   const [newName, setNewName] = useState('');
-  const [previewMode, setPreviewMode] = useState('prueba'); // 'prueba' o 'lista'
+  const [previewMode, setPreviewMode] = useState('prueba');
   const [currentPage, setCurrentPage] = useState(0);
   const [editIndex, setEditIndex] = useState(null);
 
@@ -34,10 +35,14 @@ function App() {
   const [manualMargin, setManualMargin] = useState(0);
 
   const [numberOfLines, setNumberOfLines] = useState(1);
-  const [textAlignOption, setTextAlignOption] = useState('center'); // 'center', 'justify', 'right'
+  const [textAlignOption, setTextAlignOption] = useState('center');
   const [exampleText, setExampleText] = useState('Nombre de Ejemplo');
   const resizableBoxRef = useRef(null);
   const textBoxRef = useRef(null);
+
+  const imgInputRef = useRef(null);
+  const fontInputRef = useRef(null);
+  const listInputRef = useRef(null);
 
   useEffect(() => {
     previewCanvas();
@@ -66,6 +71,7 @@ function App() {
     highlightTextArea,
     textColor,
     diplomaBgColor,
+    fontFamily,
   ]);
 
   useEffect(() => {
@@ -172,6 +178,7 @@ function App() {
     textAreaHeightCm,
     diplomaWidthCm,
     diplomaHeightCm,
+    imgPath,
   ]);
 
   const cmToPx = (cm) => (cm * 96) / 2.54;
@@ -246,8 +253,6 @@ function App() {
   };
 
   const drawDiploma = (ctx, x, y, width, height, name) => {
-    let fontSize = 20;
-
     if (imgPath) {
       const img = new Image();
       img.src = imgPath;
@@ -262,49 +267,98 @@ function App() {
     }
 
     function drawText() {
-      const textWidthPx = cmToPx(textAreaWidthCm);
-      const textHeightPx = cmToPx(textAreaHeightCm);
+      document.fonts.ready.then(() => {
+        const textWidthPx = cmToPx(textAreaWidthCm);
+        const textHeightPx = cmToPx(textAreaHeightCm);
 
-      if (highlightTextArea) {
-        ctx.fillStyle = 'rgba(255, 215, 0, 0.5)';
-        ctx.fillRect(
-          x + (centerTextArea ? (width - textWidthPx) / 2 : cmToPx(textPosX)),
-          y + (centerTextArea ? (height - textHeightPx) / 2 : cmToPx(textPosY)),
-          textWidthPx,
-          textHeightPx
-        );
-      }
+        if (highlightTextArea) {
+          ctx.fillStyle = 'rgba(255, 215, 0, 0.5)';
+          ctx.fillRect(
+            x + (centerTextArea ? (width - textWidthPx) / 2 : cmToPx(textPosX)),
+            y + (centerTextArea ? (height - textHeightPx) / 2 : cmToPx(textPosY)),
+            textWidthPx,
+            textHeightPx
+          );
+        }
 
-      ctx.fillStyle = textColor;
-      ctx.font = `${fontSize}px Arial`;
-      ctx.textAlign = textAlignOption;
-      ctx.textBaseline = 'top';
+        ctx.fillStyle = textColor;
+        ctx.textAlign = textAlignOption;
+        ctx.textBaseline = 'top';
 
-      const words = name.split(' ');
-      const lines = [];
-      const wordsPerLine = Math.ceil(words.length / numberOfLines);
+        const words = name.split(' ');
+        const lines = [];
+        const wordsPerLine = Math.ceil(words.length / numberOfLines);
 
-      for (let i = 0; i < numberOfLines; i++) {
-        lines.push(words.slice(i * wordsPerLine, (i + 1) * wordsPerLine).join(' '));
-      }
+        for (let i = 0; i < numberOfLines; i++) {
+          lines.push(words.slice(i * wordsPerLine, (i + 1) * wordsPerLine).join(' '));
+        }
 
-      lines.forEach((line, index) => {
-        ctx.fillText(
-          line,
-          x +
-          (centerTextArea
-            ? width / 2
-            : cmToPx(textPosX) + (textAlignOption === 'center' ? textWidthPx / 2 : 0)),
-          y + (centerTextArea ? (height - textHeightPx) / 2 : cmToPx(textPosY)) + index * (fontSize + 5)
-        );
+        // text adjustment
+        let fontSize = calculateFontSize(ctx, lines, textWidthPx, textHeightPx);
+
+        ctx.font = `${fontSize}px '${fontFamily}'`;
+
+        lines.forEach((line, index) => {
+          ctx.fillText(
+            line,
+            x +
+              (centerTextArea
+                ? width / 2
+                : cmToPx(textPosX) + (textAlignOption === 'center' ? textWidthPx / 2 : 0)),
+            y +
+              (centerTextArea ? (height - textHeightPx) / 2 : cmToPx(textPosY)) +
+              index * (fontSize + 5)
+          );
+        });
       });
     }
+  };
+
+  const calculateFontSize = (ctx, lines, maxWidth, maxHeight) => {
+    let fontSize = 100; // initial size
+    let fits = false;
+
+    while (!fits && fontSize > 1) {
+      ctx.font = `${fontSize}px '${fontFamily}'`;
+      let totalHeight = 0;
+      let maxLineWidth = 0;
+
+      lines.forEach((line) => {
+        const metrics = ctx.measureText(line);
+        const lineHeight = metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
+        totalHeight += lineHeight + 5; // 5 lines spaces
+        const lineWidth = metrics.width;
+        if (lineWidth > maxLineWidth) {
+          maxLineWidth = lineWidth;
+        }
+      });
+
+      if (totalHeight <= maxHeight && maxLineWidth <= maxWidth) {
+        fits = true;
+      } else {
+        fontSize--;
+      }
+    }
+
+    return fontSize;
   };
 
   const selectFont = (e) => {
     const file = e.target.files[0];
     if (file) {
       setFontPath(file);
+      const reader = new FileReader();
+      reader.onload = function (event) {
+        const fontData = event.target.result;
+        const font = new FontFace('CustomFont', fontData);
+        font.load().then(function (loadedFont) {
+          document.fonts.add(loadedFont);
+          setFontFamily('CustomFont');
+        }).catch(function (error) {
+          console.error('Failed to load font:', error);
+        });
+      };
+      reader.readAsArrayBuffer(file);
     }
   };
 
@@ -368,6 +422,66 @@ function App() {
     setEditIndex(index);
   };
 
+  const adjustFontSizeInTextBox = () => {
+    const textBox = textBoxRef.current;
+    if (textBox) {
+      const textWidthPx = cmToPx(textAreaWidthCm);
+      const textHeightPx = cmToPx(textAreaHeightCm);
+      const lines = exampleText
+        .split(' ')
+        .reduce((resultArray, word, index) => {
+          const chunkIndex = Math.floor(
+            index / Math.ceil(exampleText.split(' ').length / numberOfLines)
+          );
+          if (!resultArray[chunkIndex]) {
+            resultArray[chunkIndex] = '';
+          }
+          resultArray[chunkIndex] += (resultArray[chunkIndex] ? ' ' : '') + word;
+          return resultArray;
+        }, []);
+
+      let fontSize = 100;
+      let fits = false;
+      const textBoxCtx = document.createElement('canvas').getContext('2d');
+
+      while (!fits && fontSize > 1) {
+        textBoxCtx.font = `${fontSize}px '${fontFamily}'`;
+        let totalHeight = 0;
+        let maxLineWidth = 0;
+
+        lines.forEach((line) => {
+          const metrics = textBoxCtx.measureText(line);
+          const lineHeight =
+            metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
+          totalHeight += lineHeight + 5; // 5 lines spaces
+          const lineWidth = metrics.width;
+          if (lineWidth > maxLineWidth) {
+            maxLineWidth = lineWidth;
+          }
+        });
+
+        if (totalHeight <= textHeightPx && maxLineWidth <= textWidthPx) {
+          fits = true;
+        } else {
+          fontSize--;
+        }
+      }
+
+      textBox.style.fontSize = `${fontSize}px`;
+    }
+  };
+
+  useEffect(() => {
+    adjustFontSizeInTextBox();
+  }, [
+    exampleText,
+    textAreaWidthCm,
+    textAreaHeightCm,
+    numberOfLines,
+    fontFamily,
+    textBoxRef.current,
+  ]);
+
   return (
     <div className="container">
       <h1>Diploma Generator</h1>
@@ -388,10 +502,19 @@ function App() {
                 accept="image/*"
                 onChange={selectBackgroundImage}
                 style={{ display: 'none' }}
+                ref={imgInputRef}
               />
             </label>
           </button>
-          <span>{imgPath ? 'Imagen seleccionada' : 'Seleccione imagen de fondo'}</span>
+          <span>{imgPath !== '' ? 'Imagen seleccionada  ' : 'Seleccione imagen de fondo '}</span>
+          {imgPath !== '' ? (
+            <button onClick={() => {
+              setImgPath('');
+              if (imgInputRef.current) {
+                imgInputRef.current.value = '';
+              }
+            }}> Eliminar Imagen</button>
+          ) : ''}
         </div>
 
         <div className="file-item">
@@ -403,10 +526,20 @@ function App() {
                 accept=".ttf"
                 onChange={selectFont}
                 style={{ display: 'none' }}
+                ref={fontInputRef}
               />
             </label>
           </button>
-          <span>{fontPath.name || 'Seleccione tipo de letra'}</span>
+          <span>{fontPath.name ? fontPath.name + '  ' : 'Seleccione tipo de letra  '}</span>
+          {fontPath.name ? (
+            <button onClick={() => {
+              setFontPath('');
+              setFontFamily('Arial');
+              if (fontInputRef.current) {
+                fontInputRef.current.value = '';
+              }
+            }}>Eliminar Letra</button>
+          ) : ''}
         </div>
 
         <div className="file-item">
@@ -418,10 +551,20 @@ function App() {
                 accept=".txt"
                 onChange={selectList}
                 style={{ display: 'none' }}
+                ref={listInputRef}
               />
             </label>
           </button>
-          <span>{listPath.name || 'Seleccione nombres (separados por coma)'}</span>
+          <span>{listPath.name ? listPath.name + '  ' : 'Seleccione nombres (separados por coma)  '}</span>
+          {listPath.name ? (
+            <button onClick={() => {
+              setListPath('');
+              setNamesList([]);
+              if (listInputRef.current) {
+                listInputRef.current.value = '';
+              }
+            }}>Eliminar Lista</button>
+          ) : ''}
         </div>
 
         <div className="names-list">
@@ -564,10 +707,13 @@ function App() {
             ref={resizableBoxRef}
             className="resizable-box"
             style={{
-              backgroundColor: diplomaBgColor,
+              backgroundImage: imgPath ? `url(${imgPath})` : null,
+              backgroundColor: !imgPath ? diplomaBgColor : null,
+              backgroundSize: 'cover',
               width: `${cmToPx(diplomaWidthCm)}px`,
               height: `${cmToPx(diplomaHeightCm)}px`,
               margin: '0 auto',
+              position: 'relative',
             }}
           >
             <div
@@ -581,10 +727,12 @@ function App() {
                 height: `${cmToPx(textAreaHeightCm)}px`,
                 color: textColor,
                 textAlign: textAlignOption,
+                fontFamily: fontFamily,
+                overflow: 'hidden',
                 transform: centerTextArea
                   ? `translate(${(cmToPx(diplomaWidthCm) - cmToPx(textAreaWidthCm)) / 2
-                  }px, ${(cmToPx(diplomaHeightCm) - cmToPx(textAreaHeightCm)) / 2
-                  }px)`
+                    }px, ${(cmToPx(diplomaHeightCm) - cmToPx(textAreaHeightCm)) / 2
+                    }px)`
                   : `translate(${cmToPx(textPosX)}px, ${cmToPx(textPosY)}px)`,
               }}
               onDoubleClick={(e) => {
