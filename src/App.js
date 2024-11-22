@@ -6,6 +6,7 @@ function App() {
   const [fontPath, setFontPath] = useState('');
   const [fontFamily, setFontFamily] = useState('Arial');
   const [imgPath, setImgPath] = useState('');
+  const [bgImage, setBgImage] = useState(null);
   const [listPath, setListPath] = useState('');
   const [namesList, setNamesList] = useState([]);
   const [newName, setNewName] = useState('');
@@ -15,21 +16,23 @@ function App() {
 
   const canvasRef = useRef(null);
 
-  const [diplomaWidthCm, setDiplomaWidthCm] = useState(8);
-  const [diplomaHeightCm, setDiplomaHeightCm] = useState(5);
+  const [diplomaWidthCm, setDiplomaWidthCm] = useState(6);
+  const [diplomaHeightCm, setDiplomaHeightCm] = useState(4);
   const [diplomaBgColor, setDiplomaBgColor] = useState('#87CEEB');
 
   const [textColor, setTextColor] = useState('#000');
-  const [textAreaWidthCm, setTextAreaWidthCm] = useState(4);
-  const [textAreaHeightCm, setTextAreaHeightCm] = useState(4);
+  const [textAreaWidthCm, setTextAreaWidthCm] = useState(5);
+  const [textAreaHeightCm, setTextAreaHeightCm] = useState(0.4);
 
   const [textPosX, setTextPosX] = useState(0);
   const [textPosY, setTextPosY] = useState(0);
-  const [centerTextArea, setCenterTextArea] = useState(false);
+  const [centerTextArea, setCenterTextArea] = useState(true);
   const [highlightTextArea, setHighlightTextArea] = useState(false);
   const [fillPageMode, setFillPageMode] = useState('automatic');
   const [manualFillCount, setManualFillCount] = useState(1);
   const [pageSize, setPageSize] = useState('carta');
+  const [customPageWidthCm, setCustomPageWidthCm] = useState(21.59);
+  const [customPageHeightCm, setCustomPageHeightCm] = useState(27.94);
   const [orientation, setOrientation] = useState('vertical');
   const [marginMode, setMarginMode] = useState('none');
   const [manualMargin, setManualMargin] = useState(0);
@@ -37,12 +40,63 @@ function App() {
   const [numberOfLines, setNumberOfLines] = useState(1);
   const [textAlignOption, setTextAlignOption] = useState('center');
   const [exampleText, setExampleText] = useState('Nombre de Ejemplo');
+
   const resizableBoxRef = useRef(null);
   const textBoxRef = useRef(null);
 
   const imgInputRef = useRef(null);
   const fontInputRef = useRef(null);
   const listInputRef = useRef(null);
+
+  const [columns, setColumns] = useState(1);
+  const [rows, setRows] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(1);
+
+  const [selectedConfiguration, setSelectedConfiguration] = useState('small');
+
+  const [diplomaRotation, setDiplomaRotation] = useState(0);
+  const [textAreaRotation, setTextAreaRotation] = useState(0);
+
+  const diplomaRotationRef = useRef(diplomaRotation);
+  const textAreaRotationRef = useRef(textAreaRotation);
+
+  useEffect(() => {
+    diplomaRotationRef.current = diplomaRotation;
+  }, [diplomaRotation]);
+
+  useEffect(() => {
+    textAreaRotationRef.current = textAreaRotation;
+  }, [textAreaRotation]);
+
+  useEffect(() => {
+    switch (selectedConfiguration) {
+      case 'small':
+        setDiplomaWidthCm(6);
+        setDiplomaHeightCm(4);
+        setTextAreaWidthCm(6);
+        setTextAreaHeightCm(0.4);
+        setCenterTextArea(true);
+        break;
+      case 'letter':
+        setDiplomaWidthCm(21.59);
+        setDiplomaHeightCm(27.94);
+        setTextAreaWidthCm(21.59);
+        setTextAreaHeightCm(2.794); // 10%
+        setCenterTextArea(true);
+        break;
+      case 'legal':
+        setDiplomaWidthCm(21.59);
+        setDiplomaHeightCm(35.56);
+        setTextAreaWidthCm(21.59);
+        setTextAreaHeightCm(3.556); // 10%
+        setCenterTextArea(true);
+        break;
+      case 'custom':
+        break;
+      default:
+        break;
+    }
+  }, [selectedConfiguration]);
 
   useEffect(() => {
     previewCanvas();
@@ -59,10 +113,13 @@ function App() {
     textPosY,
     exampleText,
     imgPath,
+    bgImage,
     textAlignOption,
     numberOfLines,
     centerTextArea,
     pageSize,
+    customPageWidthCm,
+    customPageHeightCm,
     orientation,
     marginMode,
     manualMargin,
@@ -72,7 +129,21 @@ function App() {
     textColor,
     diplomaBgColor,
     fontFamily,
+    diplomaRotation,
+    textAreaRotation,
   ]);
+
+  useEffect(() => {
+    if (imgPath) {
+      const img = new Image();
+      img.src = imgPath;
+      img.onload = () => {
+        setBgImage(img);
+      };
+    } else {
+      setBgImage(null);
+    }
+  }, [imgPath]);
 
   useEffect(() => {
     interact(resizableBoxRef.current).unset();
@@ -93,13 +164,14 @@ function App() {
             x += event.deltaRect.left;
             y += event.deltaRect.top;
 
-            target.style.transform = `translate(${x}px, ${y}px)`;
-
             target.setAttribute('data-x', x);
             target.setAttribute('data-y', y);
 
+            target.style.transform = `translate(${x}px, ${y}px) rotate(${diplomaRotationRef.current}deg)`;
+
             setDiplomaWidthCm(pxToCm(event.rect.width));
             setDiplomaHeightCm(pxToCm(event.rect.height));
+            setSelectedConfiguration('custom');
           },
         },
         modifiers: [
@@ -107,6 +179,30 @@ function App() {
             min: { width: 50, height: 50 },
           }),
         ],
+      })
+      .draggable({
+        listeners: {
+          move(event) {
+            const target = event.target;
+            let x = parseFloat(target.getAttribute('data-x')) || 0;
+            let y = parseFloat(target.getAttribute('data-y')) || 0;
+
+            const angle = (diplomaRotationRef.current * Math.PI) / 180;
+            const sin = Math.sin(angle);
+            const cos = Math.cos(angle);
+
+            const deltaX = event.dx * cos - event.dy * sin;
+            const deltaY = event.dx * sin + event.dy * cos;
+
+            x += deltaX;
+            y += deltaY;
+
+            target.setAttribute('data-x', x);
+            target.setAttribute('data-y', y);
+
+            target.style.transform = `translate(${x}px, ${y}px) rotate(${diplomaRotationRef.current}deg)`;
+          },
+        },
       });
 
     interact(textBoxRef.current)
@@ -124,10 +220,10 @@ function App() {
             x += event.deltaRect.left;
             y += event.deltaRect.top;
 
-            target.style.transform = `translate(${x}px, ${y}px)`;
-
             target.setAttribute('data-x', x);
             target.setAttribute('data-y', y);
+
+            target.style.transform = `translate(${x}px, ${y}px) rotate(${textAreaRotationRef.current}deg)`;
 
             setTextAreaWidthCm(pxToCm(event.rect.width));
             setTextAreaHeightCm(pxToCm(event.rect.height));
@@ -137,12 +233,13 @@ function App() {
             if (centerTextArea) {
               x = (cmToPx(diplomaWidthCm) - event.rect.width) / 2;
               y = (cmToPx(diplomaHeightCm) - event.rect.height) / 2;
-              target.style.transform = `translate(${x}px, ${y}px)`;
               target.setAttribute('data-x', x);
               target.setAttribute('data-y', y);
+              target.style.transform = `translate(${x}px, ${y}px) rotate(${textAreaRotationRef.current}deg)`;
               setTextPosX(pxToCm(x));
               setTextPosY(pxToCm(y));
             }
+            setSelectedConfiguration('custom');
           },
         },
         modifiers: [
@@ -156,18 +253,27 @@ function App() {
           move(event) {
             if (!centerTextArea) {
               const target = event.target;
-              const x =
-                (parseFloat(target.getAttribute('data-x')) || 0) + event.dx;
-              const y =
-                (parseFloat(target.getAttribute('data-y')) || 0) + event.dy;
+              let x = parseFloat(target.getAttribute('data-x')) || 0;
+              let y = parseFloat(target.getAttribute('data-y')) || 0;
 
-              target.style.transform = `translate(${x}px, ${y}px)`;
+              const angle = (textAreaRotationRef.current * Math.PI) / 180;
+              const sin = Math.sin(angle);
+              const cos = Math.cos(angle);
+
+              const deltaX = event.dx * cos - event.dy * sin;
+              const deltaY = event.dx * sin + event.dy * cos;
+
+              x += deltaX;
+              y += deltaY;
 
               target.setAttribute('data-x', x);
               target.setAttribute('data-y', y);
 
+              target.style.transform = `translate(${x}px, ${y}px) rotate(${textAreaRotationRef.current}deg)`;
+
               setTextPosX(pxToCm(x));
               setTextPosY(pxToCm(y));
+              setSelectedConfiguration('custom');
             }
           },
         },
@@ -181,17 +287,40 @@ function App() {
     imgPath,
   ]);
 
+  useEffect(() => {
+    const target = resizableBoxRef.current;
+    if (target) {
+      let x = parseFloat(target.getAttribute('data-x')) || 0;
+      let y = parseFloat(target.getAttribute('data-y')) || 0;
+      target.style.transform = `translate(${x}px, ${y}px) rotate(${diplomaRotation}deg)`;
+    }
+  }, [diplomaRotation]);
+
+  useEffect(() => {
+    const target = textBoxRef.current;
+    if (target) {
+      let x = parseFloat(target.getAttribute('data-x')) || 0;
+      let y = parseFloat(target.getAttribute('data-y')) || 0;
+      target.style.transform = `translate(${x}px, ${y}px) rotate(${textAreaRotation}deg)`;
+    }
+  }, [textAreaRotation]);
+
   const cmToPx = (cm) => (cm * 96) / 2.54;
   const pxToCm = (px) => (px * 2.54) / 96;
 
   const getPageDimensions = (size) => {
     switch (size) {
       case 'carta':
-        return { width: cmToPx(21.59), height: cmToPx(27.94) };
+        return { width: 21.59, height: 27.94 };
       case 'legal':
-        return { width: cmToPx(21.59), height: cmToPx(35.56) };
+        return { width: 21.59, height: 35.56 };
+      case 'custom':
+        return {
+          width: customPageWidthCm,
+          height: customPageHeightCm,
+        };
       default:
-        return { width: cmToPx(21.59), height: cmToPx(27.94) };
+        return { width: 21.59, height: 27.94 };
     }
   };
 
@@ -199,45 +328,148 @@ function App() {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
 
-    const { width, height } = getPageDimensions(pageSize);
-    canvas.width =
-      orientation === 'horizontal' ? Math.max(width, height) : Math.min(width, height);
-    canvas.height =
-      orientation === 'horizontal' ? Math.min(width, height) : Math.max(width, height);
+    const pageDimensions = getPageDimensions(pageSize);
+    let pageWidthCm = pageDimensions.width;
+    let pageHeightCm = pageDimensions.height;
+
+    // cm to px
+    const pageWidthPx = cmToPx(pageWidthCm);
+    const pageHeightPx = cmToPx(pageHeightCm);
+
+    // size of canva
+    canvas.width = pageWidthPx;
+    canvas.height = pageHeightPx;
+
     ctx.fillStyle = '#FFFFFF';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+    if (orientation === 'horizontal') {
+      ctx.save();
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.translate(-canvas.height / 2, -canvas.width / 2);
+    }
+
     const diplomaWidthPx = cmToPx(diplomaWidthCm);
     const diplomaHeightPx = cmToPx(diplomaHeightCm);
-    let columns, rows;
+
+    let columns = 1;
+    let rows = 1;
+    let marginX = 0;
+    let marginY = 0;
 
     if (fillPageMode === 'automatic') {
-      columns = Math.floor(canvas.width / diplomaWidthPx);
-      rows = Math.floor(canvas.height / diplomaHeightPx);
-    } else {
-      columns = Math.min(manualFillCount, Math.floor(canvas.width / diplomaWidthPx));
-      rows = Math.ceil(manualFillCount / columns);
+      if (marginMode === 'none') {
+        marginX = 0;
+        marginY = 0;
+        columns = Math.floor(canvas.width / diplomaWidthPx);
+        rows = Math.floor(canvas.height / diplomaHeightPx);
+      } else if (marginMode === 'manual') {
+        marginX = cmToPx(manualMargin);
+        marginY = cmToPx(manualMargin);
+        columns = Math.floor(
+          (canvas.width + marginX) / (diplomaWidthPx + marginX)
+        );
+        rows = Math.floor(
+          (canvas.height + marginY) / (diplomaHeightPx + marginY)
+        );
+      } else if (marginMode === 'automatic') {
+        columns = Math.floor(canvas.width / diplomaWidthPx);
+        rows = Math.floor(canvas.height / diplomaHeightPx);
+
+        marginX = (canvas.width - columns * diplomaWidthPx) / (columns + 1);
+        marginY = (canvas.height - rows * diplomaHeightPx) / (rows + 1);
+
+        if (marginX < 0) marginX = 0;
+        if (marginY < 0) marginY = 0;
+      }
+
+      columns = Math.max(1, columns);
+      rows = Math.max(1, rows);
+    } else if (fillPageMode === 'manual') {
+
+      const manualItemsPerPage = manualFillCount;
+
+      let maxColumns, maxRows;
+      if (marginMode === 'none') {
+        marginX = 0;
+        marginY = 0;
+        maxColumns = Math.floor(canvas.width / diplomaWidthPx);
+        maxRows = Math.floor(canvas.height / diplomaHeightPx);
+      } else if (marginMode === 'manual') {
+        marginX = cmToPx(manualMargin);
+        marginY = cmToPx(manualMargin);
+        maxColumns = Math.floor(
+          (canvas.width + marginX) / (diplomaWidthPx + marginX)
+        );
+        maxRows = Math.floor(
+          (canvas.height + marginY) / (diplomaHeightPx + marginY)
+        );
+      } else if (marginMode === 'automatic') {
+        columns = Math.floor(canvas.width / diplomaWidthPx);
+        rows = Math.floor(canvas.height / diplomaHeightPx);
+
+        marginX = (canvas.width - columns * diplomaWidthPx) / (columns + 1);
+        marginY = (canvas.height - rows * diplomaHeightPx) / (rows + 1);
+
+        if (marginX < 0) marginX = 0;
+        if (marginY < 0) marginY = 0;
+
+        maxColumns = columns;
+        maxRows = rows;
+      }
+
+      maxColumns = Math.max(1, maxColumns);
+      maxRows = Math.max(1, maxRows);
+
+      const maxItemsPerPage = maxColumns * maxRows;
+      const itemsPerPage = Math.min(manualItemsPerPage, maxItemsPerPage);
+
+      columns = Math.min(itemsPerPage, maxColumns);
+      rows = Math.ceil(itemsPerPage / columns);
+      if (rows > maxRows) {
+        rows = maxRows;
+        columns = Math.ceil(itemsPerPage / rows);
+      }
+
+      if (marginMode === 'automatic') {
+        marginX = (canvas.width - columns * diplomaWidthPx) / (columns + 1);
+        marginY = (canvas.height - rows * diplomaHeightPx) / (rows + 1);
+        if (marginX < 0) marginX = 0;
+        if (marginY < 0) marginY = 0;
+      }
     }
 
-    let marginX = 0,
-      marginY = 0;
-    if (marginMode === 'automatic') {
-      marginX = (canvas.width - columns * diplomaWidthPx) / (columns + 1);
-      marginY = (canvas.height - rows * diplomaHeightPx) / (rows + 1);
-    } else if (marginMode === 'manual') {
-      marginX = cmToPx(manualMargin);
-      marginY = cmToPx(manualMargin);
-    }
+    columns = Math.max(1, columns);
+    rows = Math.max(1, rows);
+
+    if (marginX < 0) marginX = 0;
+    if (marginY < 0) marginY = 0;
+
+    setColumns(columns);
+    setRows(rows);
+    setItemsPerPage(columns * rows);
 
     if (previewMode === 'prueba') {
-      const x = marginX + (canvas.width - diplomaWidthPx) / 2;
-      const y = marginY + (canvas.height - diplomaHeightPx) / 2;
-      drawDiploma(ctx, x, y, diplomaWidthPx, diplomaHeightPx, exampleText);
+      const totalItems = columns * rows;
+      let count = 0;
+      for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < columns; col++) {
+          const x = marginX + col * (diplomaWidthPx + marginX);
+          const y = marginY + row * (diplomaHeightPx + marginY);
+          drawDiploma(ctx, x, y, diplomaWidthPx, diplomaHeightPx, exampleText);
+          count++;
+          if (count >= totalItems) break;
+        }
+      }
     } else if (previewMode === 'lista') {
       const enabledNames = namesList.filter((name) => name.enabled);
-      let startIndex = currentPage * (columns * rows);
-      let endIndex = Math.min(startIndex + columns * rows, enabledNames.length);
+      const totalPages = Math.ceil(enabledNames.length / itemsPerPage);
+
+      let startIndex = currentPage * itemsPerPage;
+      let endIndex = Math.min(startIndex + itemsPerPage, enabledNames.length);
       let count = startIndex;
+
       for (let row = 0; row < rows; row++) {
         for (let col = 0; col < columns; col++) {
           if (count >= endIndex) {
@@ -245,88 +477,104 @@ function App() {
           }
           const x = marginX + col * (diplomaWidthPx + marginX);
           const y = marginY + row * (diplomaHeightPx + marginY);
-          drawDiploma(ctx, x, y, diplomaWidthPx, diplomaHeightPx, enabledNames[count].name);
+          drawDiploma(
+            ctx,
+            x,
+            y,
+            diplomaWidthPx,
+            diplomaHeightPx,
+            enabledNames[count]?.name
+          );
           count++;
         }
       }
     }
+
+    if (orientation === 'horizontal') {
+      ctx.restore();
+    }
   };
 
   const drawDiploma = (ctx, x, y, width, height, name) => {
-    if (imgPath) {
-      const img = new Image();
-      img.src = imgPath;
-      img.onload = () => {
-        ctx.drawImage(img, x, y, width, height);
-        drawText();
-      };
+    ctx.save();
+    ctx.translate(x + width / 2, y + height / 2);
+    ctx.rotate((Math.PI / 180) * diplomaRotation);
+    ctx.translate(-width / 2, -height / 2);
+
+    if (bgImage) {
+      ctx.drawImage(bgImage, 0, 0, width, height);
     } else {
       ctx.fillStyle = diplomaBgColor;
-      ctx.fillRect(x, y, width, height);
-      drawText();
+      ctx.fillRect(0, 0, width, height);
     }
 
-    function drawText() {
-      document.fonts.ready.then(() => {
-        const textWidthPx = cmToPx(textAreaWidthCm);
-        const textHeightPx = cmToPx(textAreaHeightCm);
+    drawText(ctx, 0, 0, width, height, name);
 
-        if (highlightTextArea) {
-          ctx.fillStyle = 'rgba(255, 215, 0, 0.5)';
-          ctx.fillRect(
-            x + (centerTextArea ? (width - textWidthPx) / 2 : cmToPx(textPosX)),
-            y + (centerTextArea ? (height - textHeightPx) / 2 : cmToPx(textPosY)),
-            textWidthPx,
-            textHeightPx
-          );
-        }
+    ctx.restore();
+  };
 
-        ctx.fillStyle = textColor;
-        ctx.textAlign = textAlignOption;
-        ctx.textBaseline = 'top';
+  const drawText = (ctx, x, y, width, height, name) => {
+    ctx.save();
 
-        const words = name.split(' ');
-        const lines = [];
-        const wordsPerLine = Math.ceil(words.length / numberOfLines);
+    const textWidthPx = cmToPx(textAreaWidthCm);
+    const textHeightPx = cmToPx(textAreaHeightCm);
 
-        for (let i = 0; i < numberOfLines; i++) {
-          lines.push(words.slice(i * wordsPerLine, (i + 1) * wordsPerLine).join(' '));
-        }
+    let areaX = centerTextArea ? (width - textWidthPx) / 2 : cmToPx(textPosX);
+    let areaY = centerTextArea ? (height - textHeightPx) / 2 : cmToPx(textPosY);
 
-        // text adjustment
-        let fontSize = calculateFontSize(ctx, lines, textWidthPx, textHeightPx);
+    ctx.translate(x + areaX + textWidthPx / 2, y + areaY + textHeightPx / 2);
+    ctx.rotate((Math.PI / 180) * textAreaRotation);
+    ctx.translate(-textWidthPx / 2, -textHeightPx / 2);
 
-        ctx.font = `${fontSize}px '${fontFamily}'`;
-
-        lines.forEach((line, index) => {
-          ctx.fillText(
-            line,
-            x +
-              (centerTextArea
-                ? width / 2
-                : cmToPx(textPosX) + (textAlignOption === 'center' ? textWidthPx / 2 : 0)),
-            y +
-              (centerTextArea ? (height - textHeightPx) / 2 : cmToPx(textPosY)) +
-              index * (fontSize + 5)
-          );
-        });
-      });
+    if (highlightTextArea) {
+      ctx.fillStyle = 'rgba(255, 215, 0, 0.5)';
+      ctx.fillRect(0, 0, textWidthPx, textHeightPx);
     }
+
+    ctx.fillStyle = textColor;
+    ctx.textAlign = textAlignOption;
+    ctx.textBaseline = 'bottom';
+
+    const words = name.split(' ');
+    const lines = [];
+    const wordsPerLine = Math.ceil(words.length / numberOfLines);
+
+    for (let i = 0; i < numberOfLines; i++) {
+      lines.push(
+        words.slice(i * wordsPerLine, (i + 1) * wordsPerLine).join(' ')
+      );
+    }
+
+    let fontSize = calculateFontSize(ctx, lines, textWidthPx, textHeightPx);
+
+    ctx.font = `${fontSize}px '${fontFamily}'`;
+
+    lines.forEach((line, index) => {
+      ctx.fillText(
+        line,
+        textAlignOption === 'center'
+          ? textWidthPx / 2
+          : textAlignOption === 'left'
+            ? 0
+            : textWidthPx,
+        textHeightPx - (lines.length - index - 1) * (fontSize + 5)
+      );
+    });
+
+    ctx.restore();
   };
 
   const calculateFontSize = (ctx, lines, maxWidth, maxHeight) => {
-    let fontSize = 100; // initial size
+    let fontSize = 100; // big initial size
     let fits = false;
 
     while (!fits && fontSize > 1) {
       ctx.font = `${fontSize}px '${fontFamily}'`;
-      let totalHeight = 0;
+      let totalHeight = lines.length * (fontSize + 5) - 5;
       let maxLineWidth = 0;
 
       lines.forEach((line) => {
         const metrics = ctx.measureText(line);
-        const lineHeight = metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
-        totalHeight += lineHeight + 5; // 5 lines spaces
         const lineWidth = metrics.width;
         if (lineWidth > maxLineWidth) {
           maxLineWidth = lineWidth;
@@ -351,12 +599,15 @@ function App() {
       reader.onload = function (event) {
         const fontData = event.target.result;
         const font = new FontFace('CustomFont', fontData);
-        font.load().then(function (loadedFont) {
-          document.fonts.add(loadedFont);
-          setFontFamily('CustomFont');
-        }).catch(function (error) {
-          console.error('Failed to load font:', error);
-        });
+        font
+          .load()
+          .then(function (loadedFont) {
+            document.fonts.add(loadedFont);
+            setFontFamily('CustomFont');
+          })
+          .catch(function (error) {
+            console.error('Failed to load font:', error);
+          });
       };
       reader.readAsArrayBuffer(file);
     }
@@ -376,7 +627,9 @@ function App() {
       const reader = new FileReader();
       reader.onload = (event) => {
         const content = event.target.result;
-        const names = content.split(',').map((name) => ({ name: name.trim(), enabled: true }));
+        const names = content
+          .split(',')
+          .map((name) => ({ name: name.trim(), enabled: true }));
         setNamesList(names);
       };
       reader.readAsText(file, 'UTF-8');
@@ -391,7 +644,10 @@ function App() {
         setNamesList(updatedNames);
         setEditIndex(null);
       } else {
-        setNamesList([...namesList, { name: newName.trim(), enabled: true }]);
+        setNamesList([
+          ...namesList,
+          { name: newName.trim(), enabled: true },
+        ]);
       }
       setNewName('');
     }
@@ -405,7 +661,7 @@ function App() {
 
   const handlePageNavigation = (action) => {
     const enabledNames = namesList.filter((name) => name.enabled);
-    const totalPages = Math.ceil(enabledNames.length / 10);
+    const totalPages = Math.ceil(enabledNames.length / itemsPerPage);
     if (action === 'first') {
       setCurrentPage(0);
     } else if (action === 'prev' && currentPage > 0) {
@@ -436,7 +692,8 @@ function App() {
           if (!resultArray[chunkIndex]) {
             resultArray[chunkIndex] = '';
           }
-          resultArray[chunkIndex] += (resultArray[chunkIndex] ? ' ' : '') + word;
+          resultArray[chunkIndex] +=
+            (resultArray[chunkIndex] ? ' ' : '') + word;
           return resultArray;
         }, []);
 
@@ -446,14 +703,11 @@ function App() {
 
       while (!fits && fontSize > 1) {
         textBoxCtx.font = `${fontSize}px '${fontFamily}'`;
-        let totalHeight = 0;
+        let totalHeight = lines.length * (fontSize + 5) - 5;
         let maxLineWidth = 0;
 
         lines.forEach((line) => {
           const metrics = textBoxCtx.measureText(line);
-          const lineHeight =
-            metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
-          totalHeight += lineHeight + 5; // 5 lines spaces
           const lineWidth = metrics.width;
           if (lineWidth > maxLineWidth) {
             maxLineWidth = lineWidth;
@@ -482,12 +736,96 @@ function App() {
     textBoxRef.current,
   ]);
 
+  const handleDiplomaWidthChange = (e) => {
+    setDiplomaWidthCm(parseFloat(e.target.value) || 0);
+    setSelectedConfiguration('custom');
+  };
+
+  const handleDiplomaHeightChange = (e) => {
+    setDiplomaHeightCm(parseFloat(e.target.value) || 0);
+    setSelectedConfiguration('custom');
+  };
+
+  const handleTextAreaWidthChange = (e) => {
+    const newValue = parseFloat(e.target.value) || 0;
+    setTextAreaWidthCm(newValue);
+    if (centerTextArea) {
+      setTextPosX((diplomaWidthCm - newValue) / 2);
+    }
+    setSelectedConfiguration('custom');
+  };
+
+  const handleTextAreaHeightChange = (e) => {
+    const newValue = parseFloat(e.target.value) || 0;
+    setTextAreaHeightCm(newValue);
+    if (centerTextArea) {
+      setTextPosY((diplomaHeightCm - newValue) / 2);
+    }
+    setSelectedConfiguration('custom');
+  };
+
+  const handleTextPosXChange = (e) => {
+    setTextPosX(parseFloat(e.target.value) || 0);
+    setSelectedConfiguration('custom');
+  };
+
+  const handleTextPosYChange = (e) => {
+    setTextPosY(parseFloat(e.target.value) || 0);
+    setSelectedConfiguration('custom');
+  };
+
+  // rotate
+  const rotateDiploma = () => {
+    setDiplomaRotation((prev) => (prev + 90) % 360);
+  };
+
+  const rotateTextArea = () => {
+    setTextAreaRotation((prev) => (prev + 90) % 360);
+  };
+
+  // generate images
+  const generateImages = async () => {
+    const totalPages = Math.ceil(
+      namesList.filter((name) => name.enabled).length / itemsPerPage
+    );
+    const images = [];
+
+    const originalPage = currentPage;
+    const originalPreviewMode = previewMode;
+
+    setPreviewMode('lista');
+
+    for (let i = 0; i < totalPages; i++) {
+      setCurrentPage(i);
+
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      const canvas = canvasRef.current;
+      const imageData = canvas.toDataURL('image/jpeg');
+      images.push(imageData);
+    }
+
+    // initial state
+    setCurrentPage(originalPage);
+    setPreviewMode(originalPreviewMode);
+
+    // Download
+    images.forEach((dataUrl, index) => {
+      const link = document.createElement('a');
+      link.href = dataUrl;
+      link.download = `pagina_${index + 1}.jpg`;
+      link.click();
+    });
+  };
+
   return (
     <div className="container">
-      <h1>Diploma Generator</h1>
+      <h1>Generador de Diplomas</h1>
 
       <div className="fixed-bar">
-        <button className="generate-button">GENERAR</button>
+        <button className="generate-button" onClick={generateImages}>
+          GENERAR
+        </button>
       </div>
 
       <div className="file-selection">
@@ -506,15 +844,26 @@ function App() {
               />
             </label>
           </button>
-          <span>{imgPath !== '' ? 'Imagen seleccionada  ' : 'Seleccione imagen de fondo '}</span>
+          <span>
+            {imgPath !== ''
+              ? 'Imagen seleccionada  '
+              : 'Seleccione imagen de fondo '}
+          </span>
           {imgPath !== '' ? (
-            <button onClick={() => {
-              setImgPath('');
-              if (imgInputRef.current) {
-                imgInputRef.current.value = '';
-              }
-            }}> Eliminar Imagen</button>
-          ) : ''}
+            <button
+              onClick={() => {
+                setImgPath('');
+                if (imgInputRef.current) {
+                  imgInputRef.current.value = '';
+                }
+              }}
+            >
+              {' '}
+              Eliminar Imagen
+            </button>
+          ) : (
+            ''
+          )}
         </div>
 
         <div className="file-item">
@@ -530,16 +879,26 @@ function App() {
               />
             </label>
           </button>
-          <span>{fontPath.name ? fontPath.name + '  ' : 'Seleccione tipo de letra  '}</span>
+          <span>
+            {fontPath.name
+              ? fontPath.name + '  '
+              : 'Seleccione tipo de letra  '}
+          </span>
           {fontPath.name ? (
-            <button onClick={() => {
-              setFontPath('');
-              setFontFamily('Arial');
-              if (fontInputRef.current) {
-                fontInputRef.current.value = '';
-              }
-            }}>Eliminar Letra</button>
-          ) : ''}
+            <button
+              onClick={() => {
+                setFontPath('');
+                setFontFamily('Arial');
+                if (fontInputRef.current) {
+                  fontInputRef.current.value = '';
+                }
+              }}
+            >
+              Eliminar Letra
+            </button>
+          ) : (
+            ''
+          )}
         </div>
 
         <div className="file-item">
@@ -555,16 +914,26 @@ function App() {
               />
             </label>
           </button>
-          <span>{listPath.name ? listPath.name + '  ' : 'Seleccione nombres (separados por coma)  '}</span>
+          <span>
+            {listPath.name
+              ? listPath.name + '  '
+              : 'Seleccione nombres (separados por coma)  '}
+          </span>
           {listPath.name ? (
-            <button onClick={() => {
-              setListPath('');
-              setNamesList([]);
-              if (listInputRef.current) {
-                listInputRef.current.value = '';
-              }
-            }}>Eliminar Lista</button>
-          ) : ''}
+            <button
+              onClick={() => {
+                setListPath('');
+                setNamesList([]);
+                if (listInputRef.current) {
+                  listInputRef.current.value = '';
+                }
+              }}
+            >
+              Eliminar Lista
+            </button>
+          ) : (
+            ''
+          )}
         </div>
 
         <div className="names-list">
@@ -576,7 +945,9 @@ function App() {
               onChange={(e) => setNewName(e.target.value)}
               placeholder="Añadir nombre"
             />
-            <button onClick={addName}>{editIndex !== null ? 'Guardar' : 'Añadir'}</button>
+            <button onClick={addName}>
+              {editIndex !== null ? 'Guardar' : 'Añadir'}
+            </button>
           </div>
           {namesList.map((name, index) => (
             <div key={index} className="names-list-item">
@@ -599,12 +970,46 @@ function App() {
         <h2>Ajustes del Diploma</h2>
 
         <div className="manual-resize-container">
+          <div className="radio-group">
+            <label>Configuración Predeterminada:</label>
+            <label>
+              <input
+                type="radio"
+                value="small"
+                checked={selectedConfiguration === 'small'}
+                onChange={() => setSelectedConfiguration('small')}
+              />
+              Tarjeta Pequeña (6x4 cm)
+            </label>
+            <label>
+              <input
+                type="radio"
+                value="letter"
+                checked={selectedConfiguration === 'letter'}
+                onChange={() => setSelectedConfiguration('letter')}
+              />
+              Tamaño Carta
+            </label>
+            <label>
+              <input
+                type="radio"
+                value="legal"
+                checked={selectedConfiguration === 'legal'}
+                onChange={() => setSelectedConfiguration('legal')}
+              />
+              Tamaño Legal
+            </label>
+          </div>
+
           <div className="checkbox-group">
             <label>
               <input
                 type="checkbox"
                 checked={centerTextArea}
-                onChange={(e) => setCenterTextArea(e.target.checked)}
+                onChange={(e) => {
+                  setCenterTextArea(e.target.checked);
+                  setSelectedConfiguration('custom');
+                }}
               />
               Centrar el área de texto en la tarjeta
             </label>
@@ -703,9 +1108,16 @@ function App() {
             </label>
           </div>
 
+          <div className="rotation-buttons">
+            <button onClick={rotateDiploma}>Girar Tarjeta</button>
+            <button onClick={rotateTextArea}>Girar Área de Texto</button>
+          </div>
+
           <div
             ref={resizableBoxRef}
             className="resizable-box"
+            data-x="0"
+            data-y="0"
             style={{
               backgroundImage: imgPath ? `url(${imgPath})` : null,
               backgroundColor: !imgPath ? diplomaBgColor : null,
@@ -714,6 +1126,7 @@ function App() {
               height: `${cmToPx(diplomaHeightCm)}px`,
               margin: '0 auto',
               position: 'relative',
+              transform: `translate(0px, 0px) rotate(${diplomaRotation}deg)`,
             }}
           >
             <div
@@ -722,22 +1135,32 @@ function App() {
               data-x="0"
               data-y="0"
               style={{
-                backgroundColor: highlightTextArea ? '#FFD700' : 'transparent',
+                backgroundColor: highlightTextArea
+                  ? 'rgba(255, 215, 0, 0.5)'
+                  : 'transparent',
                 width: `${cmToPx(textAreaWidthCm)}px`,
                 height: `${cmToPx(textAreaHeightCm)}px`,
                 color: textColor,
                 textAlign: textAlignOption,
                 fontFamily: fontFamily,
                 overflow: 'hidden',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'flex-end',
                 transform: centerTextArea
                   ? `translate(${(cmToPx(diplomaWidthCm) - cmToPx(textAreaWidthCm)) / 2
-                    }px, ${(cmToPx(diplomaHeightCm) - cmToPx(textAreaHeightCm)) / 2
-                    }px)`
-                  : `translate(${cmToPx(textPosX)}px, ${cmToPx(textPosY)}px)`,
+                  }px, ${(cmToPx(diplomaHeightCm) - cmToPx(textAreaHeightCm)) / 2
+                  }px) rotate(${textAreaRotation}deg)`
+                  : `translate(${cmToPx(textPosX)}px, ${cmToPx(
+                    textPosY
+                  )}px) rotate(${textAreaRotation}deg)`,
               }}
               onDoubleClick={(e) => {
                 e.stopPropagation();
-                const newText = prompt('Ingrese el texto de ejemplo:', exampleText);
+                const newText = prompt(
+                  'Ingrese el texto de ejemplo:',
+                  exampleText
+                );
                 if (newText !== null) {
                   setExampleText(newText);
                 }
@@ -747,12 +1170,14 @@ function App() {
                 .split(' ')
                 .reduce((resultArray, word, index) => {
                   const chunkIndex = Math.floor(
-                    index / Math.ceil(exampleText.split(' ').length / numberOfLines)
+                    index /
+                    Math.ceil(exampleText.split(' ').length / numberOfLines)
                   );
                   if (!resultArray[chunkIndex]) {
                     resultArray[chunkIndex] = '';
                   }
-                  resultArray[chunkIndex] += (resultArray[chunkIndex] ? ' ' : '') + word;
+                  resultArray[chunkIndex] +=
+                    (resultArray[chunkIndex] ? ' ' : '') + word;
                   return resultArray;
                 }, [])
                 .map((line, index) => (
@@ -767,52 +1192,40 @@ function App() {
             <input
               type="number"
               value={diplomaWidthCm}
-              onChange={(e) => setDiplomaWidthCm(parseFloat(e.target.value) || 0)}
+              onChange={handleDiplomaWidthChange}
             />
             <label>Alto (cm):</label>
             <input
               type="number"
               value={diplomaHeightCm}
-              onChange={(e) => setDiplomaHeightCm(parseFloat(e.target.value) || 0)}
+              onChange={handleDiplomaHeightChange}
             />
 
             <label>Ancho del área de texto (cm):</label>
             <input
               type="number"
               value={textAreaWidthCm}
-              onChange={(e) => {
-                const newValue = parseFloat(e.target.value) || 0;
-                setTextAreaWidthCm(newValue);
-                if (centerTextArea) {
-                  setTextPosX((diplomaWidthCm - newValue) / 2);
-                }
-              }}
+              onChange={handleTextAreaWidthChange}
             />
             <label>Alto del área de texto (cm):</label>
             <input
               type="number"
               value={textAreaHeightCm}
-              onChange={(e) => {
-                const newValue = parseFloat(e.target.value) || 0;
-                setTextAreaHeightCm(newValue);
-                if (centerTextArea) {
-                  setTextPosY((diplomaHeightCm - newValue) / 2);
-                }
-              }}
+              onChange={handleTextAreaHeightChange}
             />
 
             <label>Posición X del texto (cm):</label>
             <input
               type="number"
               value={textPosX}
-              onChange={(e) => setTextPosX(parseFloat(e.target.value) || 0)}
+              onChange={handleTextPosXChange}
               disabled={centerTextArea}
             />
             <label>Posición Y del texto (cm):</label>
             <input
               type="number"
               value={textPosY}
-              onChange={(e) => setTextPosY(parseFloat(e.target.value) || 0)}
+              onChange={handleTextPosYChange}
               disabled={centerTextArea}
             />
           </div>
@@ -825,13 +1238,31 @@ function App() {
 
         <div className="select-page-size">
           <label>Tamaño de página:</label>
-          <select
-            value={pageSize}
-            onChange={(e) => setPageSize(e.target.value)}
-          >
+          <select value={pageSize} onChange={(e) => setPageSize(e.target.value)}>
             <option value="carta">Carta</option>
             <option value="legal">Legal</option>
+            <option value="custom">Personalizado</option>
           </select>
+          {pageSize === 'custom' && (
+            <div className="input-group">
+              <label>Ancho de página (cm):</label>
+              <input
+                type="number"
+                value={customPageWidthCm}
+                onChange={(e) =>
+                  setCustomPageWidthCm(parseFloat(e.target.value) || 0)
+                }
+              />
+              <label>Alto de página (cm):</label>
+              <input
+                type="number"
+                value={customPageHeightCm}
+                onChange={(e) =>
+                  setCustomPageHeightCm(parseFloat(e.target.value) || 0)
+                }
+              />
+            </div>
+          )}
         </div>
 
         <div className="radio-group">
@@ -856,7 +1287,7 @@ function App() {
           </label>
           {fillPageMode === 'manual' && (
             <div className="input-group">
-              <label>Cantidad de tarjetas:</label>
+              <label>Cantidad de tarjetas por página:</label>
               <input
                 type="number"
                 value={manualFillCount}
@@ -924,7 +1355,9 @@ function App() {
               <input
                 type="number"
                 value={manualMargin}
-                onChange={(e) => setManualMargin(parseFloat(e.target.value) || 0)}
+                onChange={(e) =>
+                  setManualMargin(parseFloat(e.target.value) || 0)
+                }
                 min="0"
               />
             </div>
@@ -972,7 +1405,10 @@ function App() {
             onClick={() => handlePageNavigation('next')}
             disabled={
               currentPage >=
-              Math.ceil(namesList.filter((name) => name.enabled).length / 10) - 1
+              Math.ceil(
+                namesList.filter((name) => name.enabled).length / itemsPerPage
+              ) -
+              1
             }
           >
             {'>'}
@@ -981,7 +1417,10 @@ function App() {
             onClick={() => handlePageNavigation('last')}
             disabled={
               currentPage >=
-              Math.ceil(namesList.filter((name) => name.enabled).length / 10) - 1
+              Math.ceil(
+                namesList.filter((name) => name.enabled).length / itemsPerPage
+              ) -
+              1
             }
           >
             {'>>'}
