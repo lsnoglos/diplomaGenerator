@@ -1,0 +1,15 @@
+{
+  "files": {
+    "main.css": "/diplomaGenerator/static/css/main.f0d8b100.css",
+    "main.js": "/diplomaGenerator/static/js/main.b618292a.js",
+    "static/js/453.521aeab2.chunk.js": "/diplomaGenerator/static/js/453.521aeab2.chunk.js",
+    "index.html": "/diplomaGenerator/index.html",
+    "main.f0d8b100.css.map": "/diplomaGenerator/static/css/main.f0d8b100.css.map",
+    "main.b618292a.js.map": "/diplomaGenerator/static/js/main.b618292a.js.map",
+    "453.521aeab2.chunk.js.map": "/diplomaGenerator/static/js/453.521aeab2.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.f0d8b100.css",
+    "static/js/main.b618292a.js"
+  ]
+}
