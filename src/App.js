@@ -48,8 +48,6 @@ function App() {
   const fontInputRef = useRef(null);
   const listInputRef = useRef(null);
 
-  const [columns, setColumns] = useState(1);
-  const [rows, setRows] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(1);
 
   const [selectedConfiguration, setSelectedConfiguration] = useState('small');
@@ -446,8 +444,8 @@ function App() {
     if (marginX < 0) marginX = 0;
     if (marginY < 0) marginY = 0;
 
-    setColumns(columns);
-    setRows(rows);
+    //setColumns(columns);
+    //setRows(rows);
     setItemsPerPage(columns * rows);
 
     if (previewMode === 'prueba') {
@@ -464,7 +462,7 @@ function App() {
       }
     } else if (previewMode === 'lista') {
       const enabledNames = namesList.filter((name) => name.enabled);
-      const totalPages = Math.ceil(enabledNames.length / itemsPerPage);
+      //const totalPages = Math.ceil(enabledNames.length / itemsPerPage);
 
       let startIndex = currentPage * itemsPerPage;
       let endIndex = Math.min(startIndex + itemsPerPage, enabledNames.length);
@@ -727,6 +725,7 @@ function App() {
 
   useEffect(() => {
     adjustFontSizeInTextBox();
+    // eslint-disable-next-line
   }, [
     exampleText,
     textAreaWidthCm,
