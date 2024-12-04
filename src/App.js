@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import './App.css';
 import interact from 'interactjs';
+import { throttle } from 'lodash';
 
 function App() {
   const [fontPath, setFontPath] = useState('');
@@ -164,7 +165,7 @@ function App() {
           move(event) {
             const target = event.target;
             let x = parseFloat(target.getAttribute('data-x')) || 0;
-            let y = parseFloat(target.getAttribute('data-y')) || 0;
+            let y = parseFloat(target.getAttribute('data-y')) || 0; 
 
             target.style.width = `${event.rect.width}px`;
             target.style.height = `${event.rect.height}px`;
@@ -177,16 +178,33 @@ function App() {
 
             target.style.transform = `translate(${x}px, ${y}px) rotate(${getTotalDiplomaRotation()}deg)`;
 
-            setDiplomaWidthCm(pxToCm(event.rect.width).toString());
-            setDiplomaHeightCm(pxToCm(event.rect.height).toString());
-            setSelectedConfiguration('custom');
+            // updateStateThrottle(event.rect.width, event.rect.height);
+
+            // requestAnimationFrame(() => {
+            //   setDiplomaWidthCm(pxToCm(event.rect.width).toFixed(2).toString());
+            //   setDiplomaHeightCm(pxToCm(event.rect.height).toFixed(2).toString());
+            //   setSelectedConfiguration('custom');
+            // });
           },
+        end(event) {
+          // Update React state only once resizing is done
+          const widthCm = pxToCm(event.rect.width).toString();
+          const heightCm = pxToCm(event.rect.height).toString();
+
+          setDiplomaWidthCm(widthCm);
+          setDiplomaHeightCm(heightCm);
+          setSelectedConfiguration('custom');
+        },
         },
         modifiers: [
+          interact.modifiers.restrictEdges({
+            outer: 'parent'
+          }),
           interact.modifiers.restrictSize({
             min: { width: 50, height: 50 },
           }),
         ],
+        inertia: true
       })
       .draggable({
         listeners: {
@@ -286,7 +304,6 @@ function App() {
           },
         },
       });
-    // eslint-disable-next-line
   }, [
     centerTextArea,
     textAreaWidthCm,
@@ -316,6 +333,12 @@ function App() {
     }
   }, [textAreaRotation]);
 
+  const updateStateThrottle = throttle((width, height) => {
+    setDiplomaWidthCm(pxToCm(width).toString());
+    setDiplomaHeightCm(pxToCm(height).toString());
+    setSelectedConfiguration('custom');
+  }, 500);
+
   const cmToPx = (cm) => (parseFloat(cm) * 96) / 2.54;
   const pxToCm = (px) => (px * 2.54) / 96;
 
@@ -340,6 +363,7 @@ function App() {
     if (diplomaOrientation === 'horizontal') {
       rotation += 90;
     }
+    console.log('rotation', rotation % 360)
     return rotation % 360;
   };
 
@@ -452,6 +476,10 @@ function App() {
 
     columns = Math.max(1, columns);
     rows = Math.max(1, rows);
+
+    console.log('columns', columns);
+    console.log('rows', rows);
+    console.log('columns*rows=', columns * rows);
 
     return columns * rows;
   };
@@ -955,6 +983,7 @@ function App() {
     const itemsPerPage = calculateItemsPerPage();
     const totalPages = Math.ceil(enabledNames.length / itemsPerPage);
     const images = [];
+    console.log(enabledNames.length);
 
     const originalPreviewMode = previewMode;
 
@@ -1087,6 +1116,23 @@ function App() {
     diplomaOrientation === 'horizontal' ? diplomaHeightCm : diplomaWidthCm;
   const displayDiplomaHeightCm =
     diplomaOrientation === 'horizontal' ? diplomaWidthCm : diplomaHeightCm;
+
+  useEffect(() => {
+    console.log('displayDiplomawidthCm', displayDiplomaWidthCm);
+    console.log('displayDiplomaHeightCm', displayDiplomaHeightCm);
+    console.log('textAreaWidthCm', textAreaWidthCm);
+    console.log('textAreaHeightCm', textAreaHeightCm);
+    console.log('centerTextArea', centerTextArea);
+    console.log(`translate(${(cmToPx(displayDiplomaWidthCm) - cmToPx(textAreaWidthCm)) / 2}px, ${(cmToPx(displayDiplomaHeightCm) - cmToPx(textAreaHeightCm)) / 2
+    }px) rotate(${textAreaRotation}deg))})`);
+  }, [
+    displayDiplomaWidthCm,
+    displayDiplomaHeightCm,
+    textAreaWidthCm,
+    textAreaHeightCm,
+    centerTextArea
+  ])
+
   return (
     <div className="container">
       <h1>Generador de Diplomas</h1>
@@ -1481,7 +1527,7 @@ function App() {
 
                 <div className="scale-overlay">
                   {/* Escala horizontal superior */}
-                  {Array.from({ length: Math.ceil(displayDiplomaWidthCm) + 1 }).map(
+                  {Array.from({ length: Math.ceil(displayDiplomaWidthCm) + 1}).map(
                     (_, index) => (
                       <div
                         key={`h-${index}`}
@@ -1560,9 +1606,7 @@ function App() {
                       ? `translate(${(cmToPx(displayDiplomaWidthCm) - cmToPx(textAreaWidthCm)) / 2
                       }px, ${(cmToPx(displayDiplomaHeightCm) - cmToPx(textAreaHeightCm)) / 2
                       }px) rotate(${textAreaRotation}deg)`
-                      : `translate(${cmToPx(textPosX)}px, ${cmToPx(
-                        textPosY
-                      )}px) rotate(${textAreaRotation}deg)`,
+                      : `translate(${cmToPx(textPosX)}px, ${cmToPx(textPosY)}px) rotate(${textAreaRotation}deg)`,
                   }}
                   onDoubleClick={(e) => {
                     e.stopPropagation();
@@ -1582,11 +1626,14 @@ function App() {
                         index /
                         Math.ceil(exampleText.split(' ').length / numberOfLines)
                       );
+                      console.log(index);
+                      console.log(chunkIndex);
                       if (!resultArray[chunkIndex]) {
                         resultArray[chunkIndex] = '';
                       }
                       resultArray[chunkIndex] +=
                         (resultArray[chunkIndex] ? ' ' : '') + word;
+                      console.log(resultArray);
                       return resultArray;
                     }, [])
                     .map((line, index) => (

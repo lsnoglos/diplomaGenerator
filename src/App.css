@@ -262,6 +262,7 @@ h2 {
 
 .resizable-box {
   max-width: 100%;
+  box-sizing: border-box;
 }
 
 .dimensions-indicator {
