@@ -96,6 +96,28 @@ function App() {
         setTextAreaHeightCm('3.556');
         setCenterTextArea(true);
         break;
+      case 'tarjvertical1':
+        setDiplomaWidthCm('10.7');
+        setDiplomaHeightCm('6.9');
+        setTextAreaWidthCm('6.8');
+        setTextAreaHeightCm('2.3');
+        setTextPosX('2.1');
+        setTextPosY('2.1');
+        setCenterTextArea(false);
+        setImagePosX('0.6');
+        setImagePosY('0.6');
+        break;
+      case 'tarjvertical2':
+        setDiplomaWidthCm('10.7');
+        setDiplomaHeightCm('6.9');
+        setTextAreaWidthCm('6.8');
+        setTextAreaHeightCm('2.46');
+        setTextPosX('2.3');
+        setTextPosY('2.1');
+        setCenterTextArea(false);
+        setImagePosX('0');
+        setImagePosY('0');
+        break;
       case 'custom':
         break;
       default:
@@ -1313,6 +1335,24 @@ function App() {
                     onChange={() => setSelectedConfiguration('legal')}
                   />
                   6to grado
+                </label>
+                <label>
+                  <input
+                    type="radio"
+                    value="tarjvertical1"
+                    checked={selectedConfiguration === 'tarjvertical1'}
+                    onChange={() => setSelectedConfiguration('tarjvertical1')}
+                  />
+                  Tarj vertical 1
+                </label>
+                <label>
+                  <input
+                    type="radio"
+                    value="tarjvertical2"
+                    checked={selectedConfiguration === 'tarjvertical2'}
+                    onChange={() => setSelectedConfiguration('tarjvertical2')}
+                  />
+                  Tarj vertical 2
                 </label>
               </div>
             </div>
