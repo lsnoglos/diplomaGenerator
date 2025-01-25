@@ -97,24 +97,24 @@ function App() {
         setCenterTextArea(true);
         break;
       case 'tarjvertical1':
+        setCenterTextArea(false);
         setDiplomaWidthCm('10.7');
         setDiplomaHeightCm('6.9');
-        setTextAreaWidthCm('6.8');
+        setTextAreaWidthCm('5.5');
         setTextAreaHeightCm('2.3');
-        setTextPosX('2.1');
-        setTextPosY('2.1');
-        setCenterTextArea(false);
-        setImagePosX('0.6');
-        setImagePosY('0.6');
+        setTextPosX('4.7');
+        setTextPosY('2.46');
+        setImagePosX('0');
+        setImagePosY('0');
         break;
       case 'tarjvertical2':
+        setCenterTextArea(false);
         setDiplomaWidthCm('10.7');
         setDiplomaHeightCm('6.9');
         setTextAreaWidthCm('6.8');
         setTextAreaHeightCm('2.46');
         setTextPosX('2.3');
         setTextPosY('2.1');
-        setCenterTextArea(false);
         setImagePosX('0');
         setImagePosY('0');
         break;
