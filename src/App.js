@@ -118,6 +118,24 @@ function App() {
         setImagePosX('0');
         setImagePosY('0');
         break;
+      // Nueva configuración independiente para diplomas.
+      // No modifica ninguna de las configuraciones existentes.
+      case 'diploma':
+        setDiplomaWidthCm('21.59');
+        setDiplomaHeightCm('27.94');
+        setTextAreaWidthCm('21.59');
+        setTextAreaHeightCm('2.79');
+        setTextPosX('4');
+        setTextPosY('6');
+        setImagePosX('0');
+        setImagePosY('0');
+        setCenterTextArea(false);
+        setDiplomaOrientation('horizontal');
+        setPageSize('carta');
+        setFillPageMode('automatic');
+        setOrientation('horizontal');
+        setMarginMode('none');
+        break;
       case 'custom':
         break;
       default:
@@ -1024,14 +1042,27 @@ function App() {
         [pageWidthCm, pageHeightCm] = [pageHeightCm, pageWidthCm];
       }
 
+      // Para la configuración Diploma se exporta a 300 DPI equivalentes
+      // y en PNG para evitar la compresión con pérdida de JPEG.
+      // Las configuraciones existentes mantienen exactamente su exportación actual.
+      const isDiplomaExport = selectedConfiguration === 'diploma';
+      const exportScale = isDiplomaExport ? 300 / 96 : 1;
+
       const pageWidthPx = cmToPx(pageWidthCm);
       const pageHeightPx = cmToPx(pageHeightCm);
 
-      canvas.width = pageWidthPx;
-      canvas.height = pageHeightPx;
+      canvas.width = Math.round(pageWidthPx * exportScale);
+      canvas.height = Math.round(pageHeightPx * exportScale);
+
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = isDiplomaExport ? 'high' : 'medium';
+
+      if (isDiplomaExport) {
+        ctx.scale(exportScale, exportScale);
+      }
 
       ctx.fillStyle = '#FFFFFF';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillRect(0, 0, pageWidthPx, pageHeightPx);
 
       let diplomaWidthPx = cmToPx(diplomaWidthCm);
       let diplomaHeightPx = cmToPx(diplomaHeightCm);
@@ -1108,17 +1139,25 @@ function App() {
         }
       }
 
-      // Guardar la imagen
-      const imageData = canvas.toDataURL('image/jpeg');
-      images.push(imageData);
+      // Guardar la imagen.
+      // Diploma: PNG de alta resolución (300 DPI equivalentes).
+      // Resto: se conserva el JPEG existente.
+      const imageData = isDiplomaExport
+        ? canvas.toDataURL('image/png')
+        : canvas.toDataURL('image/jpeg');
+
+      images.push({
+        dataUrl: imageData,
+        extension: isDiplomaExport ? 'png' : 'jpg',
+      });
     }
 
     setPreviewMode(originalPreviewMode);
 
-    images.forEach((dataUrl, index) => {
+    images.forEach(({ dataUrl, extension }, index) => {
       const link = document.createElement('a');
       link.href = dataUrl;
-      link.download = `pagina_${index + 1}.jpg`;
+      link.download = `pagina_${index + 1}.${extension}`;
       link.click();
     });
   };
@@ -1353,6 +1392,15 @@ function App() {
                     onChange={() => setSelectedConfiguration('tarjvertical2')}
                   />
                   Tarj vertical 2
+                </label>
+                <label>
+                  <input
+                    type="radio"
+                    value="diploma"
+                    checked={selectedConfiguration === 'diploma'}
+                    onChange={() => setSelectedConfiguration('diploma')}
+                  />
+                  Diploma (Carta)
                 </label>
               </div>
             </div>
