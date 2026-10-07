@@ -3,6 +3,8 @@ import './App.css';
 import interact from 'interactjs';
 import { throttle } from 'lodash';
 import cloisterBlackFont from './CloisterBlack.ttf';
+import firma1ImagePath from './Firma1.png';
+import firma2ImagePath from './Firma2.png';
 
 const DEFAULT_FONT_FAMILY = 'CloisterBlack';
 
@@ -12,6 +14,8 @@ function App() {
   const [fontReady, setFontReady] = useState(false);
   const [imgPath, setImgPath] = useState('');
   const [bgImage, setBgImage] = useState(null);
+  const [firma1Image, setFirma1Image] = useState(null);
+  const [firma2Image, setFirma2Image] = useState(null);
   const [listPath, setListPath] = useState('');
   const [namesList, setNamesList] = useState([]);
   const [newName, setNewName] = useState('');
@@ -201,6 +205,8 @@ function App() {
     exampleText,
     imgPath,
     bgImage,
+    firma1Image,
+    firma2Image,
     textAlignOption,
     numberOfLines,
     centerTextArea,
@@ -235,6 +241,18 @@ function App() {
       setBgImage(null);
     }
   }, [imgPath]);
+
+  useEffect(() => {
+    const loadSignature = (src, setImage) => {
+      const img = new Image();
+      img.onload = () => setImage(img);
+      img.onerror = () => setImage(null);
+      img.src = src;
+    };
+
+    loadSignature(firma1ImagePath, setFirma1Image);
+    loadSignature(firma2ImagePath, setFirma2Image);
+  }, []);
 
   useEffect(() => {
     interact(resizableBoxRef.current).unset();
@@ -778,7 +796,65 @@ function App() {
     ctx.restore();
   };
 
-  const drawDiploma = (ctx, x, y, width, height, record) => {
+  // Firmas fijas del formato Diploma (Carta).
+// Las coordenadas están calibradas sobre el diseño suministrado (2048 x 1582 px)
+// y convertidas a centímetros para que coincidan con las líneas impresas.
+const DIPLOMA_SIGNATURES = {
+  candida: {
+    image: 'firma1',
+    centerX: 21.40,
+    lineY: 18.39,
+    widthCm: 4.80,
+    gapCm: 0.05,
+  },
+  yendri: {
+    image: 'firma2',
+    centerX: 8.82,
+    lineY: 20.18,
+    widthCm: 4.80,
+    gapCm: 0.05,
+  },
+};
+
+const drawDiplomaSignatures = (ctx) => {
+  if (selectedConfiguration !== 'diploma') {
+    return;
+  }
+
+  const signatures = [
+    [DIPLOMA_SIGNATURES.candida, firma1Image],
+    [DIPLOMA_SIGNATURES.yendri, firma2Image],
+  ];
+
+  ctx.save();
+
+  signatures.forEach(([config, image]) => {
+    if (!image) {
+      return;
+    }
+
+    const targetWidth = cmToPx(config.widthCm);
+    const aspectRatio = image.height / image.width;
+    let targetHeight = targetWidth * aspectRatio;
+    let finalWidth = targetWidth;
+    const maxHeight = cmToPx(1.50);
+
+    // Evita que una firma demasiado alta invada el nombre/cargo inferior.
+    if (targetHeight > maxHeight) {
+      targetHeight = maxHeight;
+      finalWidth = targetHeight / aspectRatio;
+    }
+
+    const x = cmToPx(config.centerX) - finalWidth / 2;
+    const y = cmToPx(config.lineY) - targetHeight - cmToPx(config.gapCm);
+
+    ctx.drawImage(image, x, y, finalWidth, targetHeight);
+  });
+
+  ctx.restore();
+};
+
+const drawDiploma = (ctx, x, y, width, height, record) => {
     ctx.save();
 
     ctx.translate(x + width / 2, y + height / 2);
@@ -813,6 +889,9 @@ function App() {
     const safeRecord = typeof record === 'string'
       ? { name: record }
       : (record || { name: '' });
+
+    // Las firmas son exclusivas de Diploma (Carta).
+    drawDiplomaSignatures(ctx);
 
     drawText(ctx, 0, 0, width, height, safeRecord.name || '');
 
