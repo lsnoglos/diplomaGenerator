@@ -245,7 +245,69 @@ function App() {
   useEffect(() => {
     const loadSignature = (src, setImage) => {
       const img = new Image();
-      img.onload = () => setImage(img);
+
+      img.onload = () => {
+        // Las firmas PNG tienen áreas transparentes alrededor del trazo.
+        // Se recortan automáticamente para que widthCm controle el tamaño
+        // REAL de la firma visible y no el tamaño del lienzo transparente.
+        const sourceCanvas = document.createElement('canvas');
+        sourceCanvas.width = img.naturalWidth || img.width;
+        sourceCanvas.height = img.naturalHeight || img.height;
+
+        const sourceCtx = sourceCanvas.getContext('2d');
+        sourceCtx.drawImage(img, 0, 0);
+
+        const imageData = sourceCtx.getImageData(
+          0,
+          0,
+          sourceCanvas.width,
+          sourceCanvas.height
+        );
+        const data = imageData.data;
+
+        let minX = sourceCanvas.width;
+        let minY = sourceCanvas.height;
+        let maxX = -1;
+        let maxY = -1;
+
+        for (let y = 0; y < sourceCanvas.height; y += 1) {
+          for (let x = 0; x < sourceCanvas.width; x += 1) {
+            const alpha = data[(y * sourceCanvas.width + x) * 4 + 3];
+
+            if (alpha > 8) {
+              if (x < minX) minX = x;
+              if (y < minY) minY = y;
+              if (x > maxX) maxX = x;
+              if (y > maxY) maxY = y;
+            }
+          }
+        }
+
+        if (maxX < 0 || maxY < 0) {
+          setImage(img);
+          return;
+        }
+
+        const trimmedCanvas = document.createElement('canvas');
+        trimmedCanvas.width = maxX - minX + 1;
+        trimmedCanvas.height = maxY - minY + 1;
+
+        const trimmedCtx = trimmedCanvas.getContext('2d');
+        trimmedCtx.drawImage(
+          sourceCanvas,
+          minX,
+          minY,
+          trimmedCanvas.width,
+          trimmedCanvas.height,
+          0,
+          0,
+          trimmedCanvas.width,
+          trimmedCanvas.height
+        );
+
+        setImage(trimmedCanvas);
+      };
+
       img.onerror = () => setImage(null);
       img.src = src;
     };
@@ -803,15 +865,15 @@ const DIPLOMA_SIGNATURES = {
   candida: {
     image: 'firma1',
     centerX: 21.40,
-    lineY: 19,
-    widthCm: 20,
+    lineY: 19.00,
+    widthCm: 4.60,
     gapCm: 0.05,
   },
   yendri: {
     image: 'firma2',
     centerX: 8.82,
-    lineY: 21,
-    widthCm: 4.80,
+    lineY: 20.55,
+    widthCm: 4.60,
     gapCm: 0.05,
   },
 };
@@ -835,15 +897,8 @@ const drawDiplomaSignatures = (ctx) => {
 
     const targetWidth = cmToPx(config.widthCm);
     const aspectRatio = image.height / image.width;
-    let targetHeight = targetWidth * aspectRatio;
-    let finalWidth = targetWidth;
-    const maxHeight = cmToPx(2.20);
-
-    // Evita que una firma demasiado alta invada el nombre/cargo inferior.
-    if (targetHeight > maxHeight) {
-      targetHeight = maxHeight;
-      finalWidth = targetHeight / aspectRatio;
-    }
+    const targetHeight = targetWidth * aspectRatio;
+    const finalWidth = targetWidth;
 
     const x = cmToPx(config.centerX) - finalWidth / 2;
     const y = cmToPx(config.lineY) - targetHeight - cmToPx(config.gapCm);
