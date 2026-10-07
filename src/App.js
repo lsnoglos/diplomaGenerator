@@ -15,6 +15,12 @@ function App() {
   const [listPath, setListPath] = useState('');
   const [namesList, setNamesList] = useState([]);
   const [newName, setNewName] = useState('');
+  const [diplomaTomo, setDiplomaTomo] = useState('');
+  const [diplomaFolio, setDiplomaFolio] = useState('');
+  const [diplomaAsiento, setDiplomaAsiento] = useState('');
+  const [diplomaDia, setDiplomaDia] = useState('');
+  const [diplomaDe, setDiplomaDe] = useState('');
+  const [diplomaDel, setDiplomaDel] = useState('');
   const [previewMode, setPreviewMode] = useState('prueba');
   const [currentPage, setCurrentPage] = useState(0);
   const [editIndex, setEditIndex] = useState(null);
@@ -703,17 +709,76 @@ function App() {
         }
         const x = marginX + col * (diplomaWidthPx + marginX);
         const y = marginY + row * (diplomaHeightPx + marginY);
-        const name =
+        const record =
           previewMode === 'prueba'
-            ? exampleText
-            : namesList.filter((name) => name.enabled)[count]?.name;
-        drawDiploma(ctx, x, y, diplomaWidthPx, diplomaHeightPx, name);
+            ? { name: exampleText }
+            : namesList.filter((name) => name.enabled)[count];
+        drawDiploma(ctx, x, y, diplomaWidthPx, diplomaHeightPx, record);
         count++;
       }
     }
   };
 
-  const drawDiploma = (ctx, x, y, width, height, name) => {
+  // Posiciones calibradas sobre el formato Diploma (Carta), en centímetros.
+  // Corresponden exactamente a las líneas del diseño suministrado.
+  const DIPLOMA_REGISTRY_POSITIONS = {
+    tomo: { x: 6.99, y: 17.93 },
+    folio: { x: 10.50, y: 17.93 },
+    asiento: { x: 7.76, y: 18.44 },
+    dia: { x: 6.18, y: 18.96 },
+    de: { x: 9.05, y: 18.96 },
+    del: { x: 12.05, y: 18.96 },
+  };
+
+  const drawDiplomaRegistryData = (ctx, record) => {
+    if (selectedConfiguration !== 'diploma' || !record) {
+      return;
+    }
+
+    const fields = [
+      ['tomo', record.tomo],
+      ['folio', record.folio],
+      ['asiento', record.asiento],
+      ['dia', record.dia],
+      ['de', record.de],
+      ['del', record.del],
+    ];
+
+    // Si solamente se proporcionó el nombre, no se escribe nada en el
+    // bloque de registro. Los campos son opcionales.
+    if (!fields.some(([, value]) => value && String(value).trim() !== '')) {
+      return;
+    }
+
+    ctx.save();
+    ctx.fillStyle = textColor;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+
+    // Los datos de registro usan una tipografía compacta para mantenerse
+    // dentro de las líneas impresas del diploma, sin modificar la tipografía
+    // seleccionada para el nombre.
+    const registryFontSize = 12;
+    ctx.font = `${registryFontSize}px Arial`;
+
+    fields.forEach(([field, value]) => {
+      const text = value ? String(value).trim() : '';
+      if (!text) {
+        return;
+      }
+
+      const position = DIPLOMA_REGISTRY_POSITIONS[field];
+      ctx.fillText(
+        text,
+        cmToPx(position.x),
+        cmToPx(position.y)
+      );
+    });
+
+    ctx.restore();
+  };
+
+  const drawDiploma = (ctx, x, y, width, height, record) => {
     ctx.save();
 
     ctx.translate(x + width / 2, y + height / 2);
@@ -745,7 +810,14 @@ function App() {
       ctx.drawImage(bgImage, posX, posY, drawWidth, drawHeight);
     }
 
-    drawText(ctx, 0, 0, width, height, name);
+    const safeRecord = typeof record === 'string'
+      ? { name: record }
+      : (record || { name: '' });
+
+    drawText(ctx, 0, 0, width, height, safeRecord.name || '');
+
+    // Los datos de registro se dibujan únicamente para Diploma (Carta).
+    drawDiplomaRegistryData(ctx, safeRecord);
 
     ctx.restore();
   };
@@ -876,29 +948,101 @@ function App() {
       const reader = new FileReader();
       reader.onload = (event) => {
         const content = event.target.result;
-        const names = content
-          .split(',')
-          .map((name) => ({ name: name.trim(), enabled: true }));
-        setNamesList(names);
+
+        if (selectedConfiguration === 'diploma') {
+          // Diploma (Carta): cada registro está separado por punto y coma
+          // y contiene siempre 7 campos separados por coma:
+          // nombre,TOMO,FOLIO,ASIENTO,Dia,De,Del;
+          const records = content
+            .split(';')
+            .map((record) => record.trim())
+            .filter((record) => record !== '')
+            .map((record) => {
+              const fields = record.split(',').map((field) => field.trim());
+
+              return {
+                name: fields[0] || '',
+                tomo: fields[1] || '',
+                folio: fields[2] || '',
+                asiento: fields[3] || '',
+                dia: fields[4] || '',
+                de: fields[5] || '',
+                del: fields[6] || '',
+                enabled: true,
+              };
+            })
+            .filter((record) => record.name !== '');
+
+          setNamesList(records);
+        } else {
+          // Las demás configuraciones mantienen el formato anterior:
+          // nombres separados por coma.
+          const names = content
+            .split(',')
+            .map((name) => ({ name: name.trim(), enabled: true }))
+            .filter((item) => item.name !== '');
+
+          setNamesList(names);
+        }
       };
       reader.readAsText(file, 'UTF-8');
     }
+  };
+
+  const clearDiplomaFields = () => {
+    setNewName('');
+    setDiplomaTomo('');
+    setDiplomaFolio('');
+    setDiplomaAsiento('');
+    setDiplomaDia('');
+    setDiplomaDe('');
+    setDiplomaDel('');
   };
 
   const addName = () => {
     if (newName.trim() !== '') {
       if (editIndex !== null) {
         const updatedNames = [...namesList];
-        updatedNames[editIndex].name = newName.trim();
+
+        if (selectedConfiguration === 'diploma') {
+          updatedNames[editIndex] = {
+            ...updatedNames[editIndex],
+            name: newName.trim(),
+            tomo: diplomaTomo.trim(),
+            folio: diplomaFolio.trim(),
+            asiento: diplomaAsiento.trim(),
+            dia: diplomaDia.trim(),
+            de: diplomaDe.trim(),
+            del: diplomaDel.trim(),
+          };
+        } else {
+          updatedNames[editIndex] = {
+            ...updatedNames[editIndex],
+            name: newName.trim(),
+          };
+        }
+
         setNamesList(updatedNames);
         setEditIndex(null);
       } else {
         setNamesList([
           ...namesList,
-          { name: newName.trim(), enabled: true },
+          selectedConfiguration === 'diploma'
+            ? {
+                name: newName.trim(),
+                tomo: diplomaTomo.trim(),
+                folio: diplomaFolio.trim(),
+                asiento: diplomaAsiento.trim(),
+                dia: diplomaDia.trim(),
+                de: diplomaDe.trim(),
+                del: diplomaDel.trim(),
+                enabled: true,
+              }
+            : { name: newName.trim(), enabled: true },
         ]);
       }
-      setNewName('');
+
+      clearDiplomaFields();
     }
   };
 
@@ -923,7 +1067,19 @@ function App() {
   };
 
   const editName = (index) => {
-    setNewName(namesList[index].name);
+    const item = namesList[index];
+
+    setNewName(item.name || '');
+
+    if (selectedConfiguration === 'diploma') {
+      setDiplomaTomo(item.tomo || '');
+      setDiplomaFolio(item.folio || '');
+      setDiplomaAsiento(item.asiento || '');
+      setDiplomaDia(item.dia || '');
+      setDiplomaDe(item.de || '');
+      setDiplomaDel(item.del || '');
+    }
+
     setEditIndex(index);
   };
 
@@ -1169,7 +1325,7 @@ function App() {
             y,
             diplomaWidthPx,
             diplomaHeightPx,
-            enabledNames[count]?.name
+            enabledNames[count]
           );
           count++;
         }
@@ -1349,17 +1505,73 @@ function App() {
 
           <div className="names-list">
             <h3>Lista de Nombres</h3>
+
             <div className="manual-names">
               <input
                 type="text"
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
-                placeholder="Añadir nombre"
+                placeholder="Nombre"
               />
+
+              {selectedConfiguration === 'diploma' && (
+                <>
+                  <input
+                    type="text"
+                    value={diplomaTomo}
+                    onChange={(e) => setDiplomaTomo(e.target.value)}
+                    placeholder="TOMO No."
+                  />
+                  <input
+                    type="text"
+                    value={diplomaFolio}
+                    onChange={(e) => setDiplomaFolio(e.target.value)}
+                    placeholder="FOLIO"
+                  />
+                  <input
+                    type="text"
+                    value={diplomaAsiento}
+                    onChange={(e) => setDiplomaAsiento(e.target.value)}
+                    placeholder="ASIENTO No."
+                  />
+                  <input
+                    type="text"
+                    value={diplomaDia}
+                    onChange={(e) => setDiplomaDia(e.target.value)}
+                    placeholder="Día"
+                  />
+                  <input
+                    type="text"
+                    value={diplomaDe}
+                    onChange={(e) => setDiplomaDe(e.target.value)}
+                    placeholder="De"
+                  />
+                  <input
+                    type="text"
+                    value={diplomaDel}
+                    onChange={(e) => setDiplomaDel(e.target.value)}
+                    placeholder="Del"
+                  />
+                </>
+              )}
+
               <button onClick={addName}>
                 {editIndex !== null ? 'Guardar' : 'Añadir'}
               </button>
             </div>
+
+            {selectedConfiguration === 'diploma' && (
+              <div style={{
+                marginTop: '8px',
+                fontSize: '12px',
+                color: '#555'
+              }}>
+                Formato de lista para Diploma (Carta):
+                <br />
+                <code>nombre,TOMO,FOLIO,ASIENTO,Dia,De,Del;</code>
+              </div>
+            )}
+
             {namesList.map((name, index) => (
               <div key={index} className="names-list-item">
                 <input
@@ -1367,7 +1579,19 @@ function App() {
                   checked={name.enabled}
                   onChange={() => toggleName(index)}
                 />
-                <span className="name-text">{name.name}</span>
+                <span className="name-text">
+                  {selectedConfiguration === 'diploma'
+                    ? [
+                        name.name,
+                        name.tomo,
+                        name.folio,
+                        name.asiento,
+                        name.dia,
+                        name.de,
+                        name.del,
+                      ].filter((value) => value && String(value).trim() !== '').join(' | ')
+                    : name.name}
+                </span>
                 <button onClick={() => editName(index)} className="edit-button">
                   Editar
                 </button>
