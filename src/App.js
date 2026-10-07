@@ -865,14 +865,14 @@ const DIPLOMA_SIGNATURES = {
   candida: {
     image: 'firma1',
     centerX: 21.40,
-    lineY: 20.00,
+    lineY: 20.55,
     widthCm: 5,
     gapCm: 0.05,
   },
   yendri: {
     image: 'firma2',
     centerX: 8.82,
-    lineY: 20.55,
+    lineY: 20.65,
     widthCm: 4.60,
     gapCm: 0.05,
   },
