@@ -866,7 +866,7 @@ const DIPLOMA_SIGNATURES = {
     image: 'firma1',
     centerX: 21.40,
     lineY: 19.00,
-    widthCm: 4.60,
+    widthCm: 11.50,
     gapCm: 0.05,
   },
   yendri: {
