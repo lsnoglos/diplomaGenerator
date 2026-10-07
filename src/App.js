@@ -2,10 +2,14 @@ import React, { useState, useRef, useEffect } from 'react';
 import './App.css';
 import interact from 'interactjs';
 import { throttle } from 'lodash';
+import cloisterBlackFont from './CloisterBlack.ttf';
+
+const DEFAULT_FONT_FAMILY = 'CloisterBlack';
 
 function App() {
   const [fontPath, setFontPath] = useState('');
-  const [fontFamily, setFontFamily] = useState('Arial');
+  const [fontFamily, setFontFamily] = useState(DEFAULT_FONT_FAMILY);
+  const [fontReady, setFontReady] = useState(false);
   const [imgPath, setImgPath] = useState('');
   const [bgImage, setBgImage] = useState(null);
   const [listPath, setListPath] = useState('');
@@ -64,6 +68,37 @@ function App() {
   const [imagePosY, setImagePosY] = useState('0');
 
   const [diplomaOrientation, setDiplomaOrientation] = useState('vertical');
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadDefaultFont = async () => {
+      try {
+        const font = new FontFace(
+          DEFAULT_FONT_FAMILY,
+          `url(${cloisterBlackFont})`
+        );
+        const loadedFont = await font.load();
+        document.fonts.add(loadedFont);
+
+        if (!cancelled) {
+          setFontReady(true);
+        }
+      } catch (error) {
+        console.error('Failed to load default font:', error);
+
+        if (!cancelled) {
+          setFontReady(true);
+        }
+      }
+    };
+
+    loadDefaultFont();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     diplomaRotationRef.current = diplomaRotation;
@@ -147,6 +182,7 @@ function App() {
     previewCanvas();
     // eslint-disable-next-line
   }, [
+    fontReady,
     currentPage,
     previewMode,
     namesList,
@@ -1257,13 +1293,13 @@ function App() {
               </label>
             </button>
             <span>
-              {fontPath.name ? fontPath.name + '  ' : 'Seleccione tipo de letra  '}
+              {fontPath.name ? fontPath.name + '  ' : 'Predeterminada: CloisterBlack.ttf  '}
             </span>
             {fontPath.name ? (
               <button
                 onClick={() => {
                   setFontPath('');
-                  setFontFamily('Arial');
+                  setFontFamily(DEFAULT_FONT_FAMILY);
                   if (fontInputRef.current) {
                     fontInputRef.current.value = '';
                   }
