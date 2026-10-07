@@ -804,7 +804,7 @@ const DIPLOMA_SIGNATURES = {
     image: 'firma1',
     centerX: 21.40,
     lineY: 18.39,
-    widthCm: 4.80,
+    widthCm: 8.00,
     gapCm: 0.05,
   },
   yendri: {
@@ -837,7 +837,7 @@ const drawDiplomaSignatures = (ctx) => {
     const aspectRatio = image.height / image.width;
     let targetHeight = targetWidth * aspectRatio;
     let finalWidth = targetWidth;
-    const maxHeight = cmToPx(1.50);
+    const maxHeight = cmToPx(2.20);
 
     // Evita que una firma demasiado alta invada el nombre/cargo inferior.
     if (targetHeight > maxHeight) {
