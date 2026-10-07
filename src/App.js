@@ -803,14 +803,14 @@ const DIPLOMA_SIGNATURES = {
   candida: {
     image: 'firma1',
     centerX: 21.40,
-    lineY: 18.39,
-    widthCm: 8.00,
+    lineY: 20,
+    widthCm: 12,
     gapCm: 0.05,
   },
   yendri: {
     image: 'firma2',
     centerX: 8.82,
-    lineY: 20.18,
+    lineY: 22,
     widthCm: 4.80,
     gapCm: 0.05,
   },
