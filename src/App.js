@@ -1640,7 +1640,7 @@ const drawDiploma = (ctx, x, y, width, height, record) => {
           <div className="names-list">
             <h3>Lista de Nombres</h3>
 
-            <div className="manual-names">
+            <div className={`manual-names${selectedConfiguration === 'diploma' ? ' diploma-manual-names' : ''}`}>
               <input
                 type="text"
                 value={newName}
