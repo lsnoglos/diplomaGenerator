@@ -176,10 +176,10 @@ function App() {
         setImagePosY('0');
         setCenterTextArea(false);
         setDiplomaOrientation('horizontal');
-        // La plantilla del Diploma (Carta) necesita una rotación inicial
-        // de 180° adicional porque la orientación horizontal ya aporta 90°.
-        // Resultado inicial: 270°, que deja el diploma derecho desde el inicio.
-        setDiplomaRotation(180);
+        // La orientación horizontal aporta 90°. La plantilla debe quedar
+        // en 0° efectivos al seleccionarla, por lo que se establece 270°
+        // y el +90° de la orientación completa los 360°.
+        setDiplomaRotation(270);
         setPageSize('carta');
         setFillPageMode('automatic');
         setOrientation('horizontal');
