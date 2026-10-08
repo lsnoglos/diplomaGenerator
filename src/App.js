@@ -866,14 +866,14 @@ const DIPLOMA_SIGNATURES = {
     image: 'firma1',
     centerX: 21.40,
     lineY: 20.55,
-    widthCm: 5,
+    widthCm: 4.50,
     gapCm: 0.05,
   },
   yendri: {
     image: 'firma2',
     centerX: 8.82,
     lineY: 20.65,
-    widthCm: 4.60,
+    widthCm: 4.20,
     gapCm: 0.05,
   },
 };
