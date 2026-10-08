@@ -171,7 +171,7 @@ function App() {
         setTextAreaWidthCm('21.59');
         setTextAreaHeightCm('2.79');
         setTextPosX('4');
-        setTextPosY('7.5');
+        setTextPosY('7');
         setImagePosX('0');
         setImagePosY('0');
         setCenterTextArea(false);
