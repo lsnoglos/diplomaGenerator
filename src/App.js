@@ -865,8 +865,8 @@ const DIPLOMA_SIGNATURES = {
   candida: {
     image: 'firma1',
     centerX: 21.40,
-    lineY: 20.55,
-    widthCm: 5,
+    lineY: 19.30,
+    widthCm: 11.50,
     gapCm: 0.05,
   },
   yendri: {
