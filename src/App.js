@@ -12,7 +12,13 @@ function App() {
   const [fontPath, setFontPath] = useState('');
   const [fontFamily, setFontFamily] = useState(DEFAULT_FONT_FAMILY);
   const [fontReady, setFontReady] = useState(false);
-  const [imgPath, setImgPath] = useState('');
+  const [imgPath, setImgPath] = useState(() => {
+    try {
+      return localStorage.getItem('diplomaGenerator.backgroundImage') || '';
+    } catch {
+      return '';
+    }
+  });
   const [bgImage, setBgImage] = useState(null);
   const [firma1Image, setFirma1Image] = useState(null);
   const [firma2Image, setFirma2Image] = useState(null);
@@ -65,7 +71,7 @@ function App() {
 
   const [itemsPerPage, setItemsPerPage] = useState(1);
 
-  const [selectedConfiguration, setSelectedConfiguration] = useState('small');
+  const [selectedConfiguration, setSelectedConfiguration] = useState('diploma');
 
   const [diplomaRotation, setDiplomaRotation] = useState(0);
   const [textAreaRotation, setTextAreaRotation] = useState(0);
@@ -1074,9 +1080,22 @@ const drawDiploma = (ctx, x, y, width, height, record) => {
 
   const selectBackgroundImage = (e) => {
     const file = e.target.files[0];
-    if (file) {
-      setImgPath(URL.createObjectURL(file));
-    }
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result;
+      setImgPath(dataUrl);
+      try {
+        localStorage.setItem('diplomaGenerator.backgroundImage', dataUrl);
+      } catch (error) {
+        console.error('No se pudo guardar la imagen de fondo en localStorage:', error);
+      }
+    };
+    reader.onerror = () => {
+      console.error('No se pudo leer la imagen de fondo.');
+    };
+    reader.readAsDataURL(file);
   };
 
   const selectList = (e) => {
@@ -1476,18 +1495,34 @@ const drawDiploma = (ctx, x, y, width, height, record) => {
         ? canvas.toDataURL('image/png')
         : canvas.toDataURL('image/jpeg');
 
+      const pageNames = enabledNames
+        .slice(startIndex, endIndex)
+        .map((record) => (typeof record === 'string' ? record : record.name || 'Diploma'))
+        .filter(Boolean);
+      const safeFileName = (isDiplomaExport && pageNames.length
+        ? pageNames.join('_')
+        : `pagina_${pageIndex + 1}`)
+        .normalize('NFD')
+        .replace(/[\\u0300-\\u036f]/g, '')
+        .replace(/[<>:"/\\\\|?*\\x00-\\x1F]/g, '')
+        .replace(/\\s+/g, '_')
+        .replace(/_+/g, '_')
+        .replace(/^_|_$/g, '')
+        .slice(0, 140) || `diploma_${pageIndex + 1}`;
+
       images.push({
         dataUrl: imageData,
         extension: isDiplomaExport ? 'png' : 'jpg',
+        fileName: safeFileName,
       });
     }
 
     setPreviewMode(originalPreviewMode);
 
-    images.forEach(({ dataUrl, extension }, index) => {
+    images.forEach(({ dataUrl, extension, fileName }, index) => {
       const link = document.createElement('a');
       link.href = dataUrl;
-      link.download = `pagina_${index + 1}.${extension}`;
+      link.download = `${fileName || `pagina_${index + 1}`}.${extension}`;
       link.click();
     });
   };
@@ -1560,6 +1595,11 @@ const drawDiploma = (ctx, x, y, width, height, record) => {
               <button
                 onClick={() => {
                   setImgPath('');
+                  try {
+                    localStorage.removeItem('diplomaGenerator.backgroundImage');
+                  } catch (error) {
+                    console.error('No se pudo eliminar la imagen guardada:', error);
+                  }
                   if (imgInputRef.current) {
                     imgInputRef.current.value = '';
                   }
