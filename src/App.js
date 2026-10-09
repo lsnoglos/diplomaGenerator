@@ -1501,14 +1501,14 @@ const drawDiploma = (ctx, x, y, width, height, record) => {
         .filter(Boolean);
       const safeFileName = (isDiplomaExport && pageNames.length
         ? pageNames.join('_')
-        : `pagina_${pageIndex + 1}`)
+        : \`pagina_\${pageIndex + 1}\`)
         .normalize('NFD')
-        .replace(/[\\u0300-\\u036f]/g, '')
-        .replace(/[<>:"/\\\\|?*\\x00-\\x1F]/g, '')
-        .replace(/\\s+/g, '_')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[<>:"/\\|?*\x00-\x1F]/g, '')
+        .replace(/\s+/g, '_')
         .replace(/_+/g, '_')
         .replace(/^_|_$/g, '')
-        .slice(0, 140) || `diploma_${pageIndex + 1}`;
+        .slice(0, 140) || \`diploma_\${pageIndex + 1}\`;
 
       images.push({
         dataUrl: imageData,
