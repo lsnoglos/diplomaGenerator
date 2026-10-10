@@ -3,10 +3,17 @@ import './App.css';
 import interact from 'interactjs';
 import { throttle } from 'lodash';
 import cloisterBlackFont from './CloisterBlack.ttf';
-import firma1ImagePath from './Firma1.png';
-import firma2ImagePath from './Firma2.png';
 
 const DEFAULT_FONT_FAMILY = 'CloisterBlack';
+const SIGNATURE_STORAGE_KEYS = {
+  firma1Image: 'diplomaGenerator.firma1Image',
+  firma2Image: 'diplomaGenerator.firma2Image',
+  settings: 'diplomaGenerator.signatureSettings',
+};
+const DEFAULT_SIGNATURE_SETTINGS = {
+  firma1: { x: 21.40, y: 20.55, size: 4.50 },
+  firma2: { x: 8.82, y: 20.65, size: 4.20 },
+};
 
 function App() {
   const [fontPath, setFontPath] = useState('');
@@ -22,6 +29,25 @@ function App() {
   const [bgImage, setBgImage] = useState(null);
   const [firma1Image, setFirma1Image] = useState(null);
   const [firma2Image, setFirma2Image] = useState(null);
+  const [firma1Data, setFirma1Data] = useState(() => {
+    try { return localStorage.getItem(SIGNATURE_STORAGE_KEYS.firma1Image) || ''; }
+    catch { return ''; }
+  });
+  const [firma2Data, setFirma2Data] = useState(() => {
+    try { return localStorage.getItem(SIGNATURE_STORAGE_KEYS.firma2Image) || ''; }
+    catch { return ''; }
+  });
+  const [signatureSettings, setSignatureSettings] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(SIGNATURE_STORAGE_KEYS.settings) || '{}');
+      return {
+        firma1: { ...DEFAULT_SIGNATURE_SETTINGS.firma1, ...(saved.firma1 || {}) },
+        firma2: { ...DEFAULT_SIGNATURE_SETTINGS.firma2, ...(saved.firma2 || {}) },
+      };
+    } catch {
+      return DEFAULT_SIGNATURE_SETTINGS;
+    }
+  });
   const [listPath, setListPath] = useState('');
   const [namesList, setNamesList] = useState([]);
   const [newName, setNewName] = useState('');
@@ -68,6 +94,8 @@ function App() {
   const imgInputRef = useRef(null);
   const fontInputRef = useRef(null);
   const listInputRef = useRef(null);
+  const firma1InputRef = useRef(null);
+  const firma2InputRef = useRef(null);
 
   const [itemsPerPage, setItemsPerPage] = useState(1);
 
@@ -253,28 +281,22 @@ function App() {
   }, [imgPath]);
 
   useEffect(() => {
-    const loadSignature = (src, setImage) => {
-      const img = new Image();
+    const loadSignature = (dataUrl, setImage) => {
+      if (!dataUrl) {
+        setImage(null);
+        return;
+      }
 
+      const img = new Image();
       img.onload = () => {
-        // Las firmas PNG tienen áreas transparentes alrededor del trazo.
-        // Se recortan automáticamente para que widthCm controle el tamaño
-        // REAL de la firma visible y no el tamaño del lienzo transparente.
         const sourceCanvas = document.createElement('canvas');
         sourceCanvas.width = img.naturalWidth || img.width;
         sourceCanvas.height = img.naturalHeight || img.height;
-
         const sourceCtx = sourceCanvas.getContext('2d');
         sourceCtx.drawImage(img, 0, 0);
 
-        const imageData = sourceCtx.getImageData(
-          0,
-          0,
-          sourceCanvas.width,
-          sourceCanvas.height
-        );
+        const imageData = sourceCtx.getImageData(0, 0, sourceCanvas.width, sourceCanvas.height);
         const data = imageData.data;
-
         let minX = sourceCanvas.width;
         let minY = sourceCanvas.height;
         let maxX = -1;
@@ -282,13 +304,11 @@ function App() {
 
         for (let y = 0; y < sourceCanvas.height; y += 1) {
           for (let x = 0; x < sourceCanvas.width; x += 1) {
-            const alpha = data[(y * sourceCanvas.width + x) * 4 + 3];
-
-            if (alpha > 8) {
-              if (x < minX) minX = x;
-              if (y < minY) minY = y;
-              if (x > maxX) maxX = x;
-              if (y > maxY) maxY = y;
+            if (data[(y * sourceCanvas.width + x) * 4 + 3] > 8) {
+              minX = Math.min(minX, x);
+              minY = Math.min(minY, y);
+              maxX = Math.max(maxX, x);
+              maxY = Math.max(maxY, y);
             }
           }
         }
@@ -301,30 +321,28 @@ function App() {
         const trimmedCanvas = document.createElement('canvas');
         trimmedCanvas.width = maxX - minX + 1;
         trimmedCanvas.height = maxY - minY + 1;
-
-        const trimmedCtx = trimmedCanvas.getContext('2d');
-        trimmedCtx.drawImage(
+        trimmedCanvas.getContext('2d').drawImage(
           sourceCanvas,
-          minX,
-          minY,
-          trimmedCanvas.width,
-          trimmedCanvas.height,
-          0,
-          0,
-          trimmedCanvas.width,
-          trimmedCanvas.height
+          minX, minY, trimmedCanvas.width, trimmedCanvas.height,
+          0, 0, trimmedCanvas.width, trimmedCanvas.height
         );
-
         setImage(trimmedCanvas);
       };
-
       img.onerror = () => setImage(null);
-      img.src = src;
+      img.src = dataUrl;
     };
 
-    loadSignature(firma1ImagePath, setFirma1Image);
-    loadSignature(firma2ImagePath, setFirma2Image);
-  }, []);
+    loadSignature(firma1Data, setFirma1Image);
+    loadSignature(firma2Data, setFirma2Image);
+  }, [firma1Data, firma2Data]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SIGNATURE_STORAGE_KEYS.settings, JSON.stringify(signatureSettings));
+    } catch (error) {
+      console.error('No se pudieron guardar los ajustes de las firmas:', error);
+    }
+  }, [signatureSettings]);
 
   useEffect(() => {
     interact(resizableBoxRef.current).unset();
@@ -868,54 +886,25 @@ function App() {
     ctx.restore();
   };
 
-  // Firmas fijas del formato Diploma (Carta).
-// Las coordenadas están calibradas sobre el diseño suministrado (2048 x 1582 px)
-// y convertidas a centímetros para que coincidan con las líneas impresas.
-const DIPLOMA_SIGNATURES = {
-  candida: {
-    image: 'firma1',
-    centerX: 21.40,
-    lineY: 20.55,
-    widthCm: 4.50,
-    gapCm: 0.05,
-  },
-  yendri: {
-    image: 'firma2',
-    centerX: 8.82,
-    lineY: 20.65,
-    widthCm: 4.20,
-    gapCm: 0.05,
-  },
-};
-
-const drawDiplomaSignatures = (ctx) => {
-  if (selectedConfiguration !== 'diploma') {
-    return;
-  }
+  const drawDiplomaSignatures = (ctx) => {
+  if (selectedConfiguration !== 'diploma') return;
 
   const signatures = [
-    [DIPLOMA_SIGNATURES.candida, firma1Image],
-    [DIPLOMA_SIGNATURES.yendri, firma2Image],
+    [signatureSettings.firma1, firma1Image],
+    [signatureSettings.firma2, firma2Image],
   ];
 
   ctx.save();
-
   signatures.forEach(([config, image]) => {
-    if (!image) {
-      return;
-    }
+    if (!image || !config) return;
 
-    const targetWidth = cmToPx(config.widthCm);
-    const aspectRatio = image.height / image.width;
-    const targetHeight = targetWidth * aspectRatio;
-    const finalWidth = targetWidth;
+    const targetWidth = cmToPx(Number(config.size) || 0);
+    const targetHeight = targetWidth * (image.height / image.width);
+    const x = cmToPx(Number(config.x) || 0) - targetWidth / 2;
+    const y = cmToPx(Number(config.y) || 0) - targetHeight - cmToPx(0.05);
 
-    const x = cmToPx(config.centerX) - finalWidth / 2;
-    const y = cmToPx(config.lineY) - targetHeight - cmToPx(config.gapCm);
-
-    ctx.drawImage(image, x, y, finalWidth, targetHeight);
+    ctx.drawImage(image, x, y, targetWidth, targetHeight);
   });
-
   ctx.restore();
 };
 
@@ -1096,6 +1085,59 @@ const drawDiploma = (ctx, x, y, width, height, record) => {
       console.error('No se pudo leer la imagen de fondo.');
     };
     reader.readAsDataURL(file);
+  };
+
+  const selectSignatureImage = (event, signatureKey) => {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+
+    if (file.type !== 'image/png') {
+      alert('Seleccione una imagen en formato PNG con fondo transparente.');
+      event.target.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = String(reader.result || '');
+      const setData = signatureKey === 'firma1' ? setFirma1Data : setFirma2Data;
+      const storageKey = signatureKey === 'firma1'
+        ? SIGNATURE_STORAGE_KEYS.firma1Image
+        : SIGNATURE_STORAGE_KEYS.firma2Image;
+      try {
+        localStorage.setItem(storageKey, dataUrl);
+        setData(dataUrl);
+      } catch (error) {
+        alert('No se pudo guardar la firma en el navegador. Pruebe con un PNG de menor tamaño.');
+        console.error('Error guardando firma:', error);
+      }
+    };
+    reader.onerror = () => alert('No se pudo leer el archivo PNG.');
+    reader.readAsDataURL(file);
+  };
+
+  const updateSignatureSetting = (signatureKey, field, value) => {
+    setSignatureSettings((current) => ({
+      ...current,
+      [signatureKey]: {
+        ...current[signatureKey],
+        [field]: value,
+      },
+    }));
+  };
+
+  const removeSignatureImage = (signatureKey) => {
+    const isFirma1 = signatureKey === 'firma1';
+    const setData = isFirma1 ? setFirma1Data : setFirma2Data;
+    const storageKey = isFirma1
+      ? SIGNATURE_STORAGE_KEYS.firma1Image
+      : SIGNATURE_STORAGE_KEYS.firma2Image;
+    setData('');
+    try { localStorage.removeItem(storageKey); } catch (error) {
+      console.error('No se pudo eliminar la firma guardada:', error);
+    }
+    const inputRef = isFirma1 ? firma1InputRef : firma2InputRef;
+    if (inputRef.current) inputRef.current.value = '';
   };
 
   const selectList = (e) => {
@@ -1645,6 +1687,68 @@ const drawDiploma = (ctx, x, y, width, height, record) => {
               ''
             )}
           </div>
+
+          {selectedConfiguration === 'diploma' && (
+            <div className="signature-upload-panel">
+              <div className="signature-upload-item">
+                <button type="button" onClick={() => firma1InputRef.current?.click()}>
+                  Adjuntar Firma 1
+                </button>
+                <input
+                  ref={firma1InputRef}
+                  type="file"
+                  accept="image/png"
+                  onChange={(event) => selectSignatureImage(event, 'firma1')}
+                  style={{ display: 'none' }}
+                />
+                <span>{firma1Data ? 'Firma 1 cargada' : 'Sin firma 1'}</span>
+                {firma1Data && <button type="button" onClick={() => removeSignatureImage('firma1')}>Quitar</button>}
+                <div className="signature-settings-grid">
+                  <label>Tamaño (cm)
+                    <input type="number" min="0.1" max="25" step="0.1" value={signatureSettings.firma1.size}
+                      onChange={(event) => updateSignatureSetting('firma1', 'size', event.target.value)} />
+                  </label>
+                  <label>Posición X (cm)
+                    <input type="number" min="0" max="30" step="0.1" value={signatureSettings.firma1.x}
+                      onChange={(event) => updateSignatureSetting('firma1', 'x', event.target.value)} />
+                  </label>
+                  <label>Posición Y (cm)
+                    <input type="number" min="0" max="35" step="0.1" value={signatureSettings.firma1.y}
+                      onChange={(event) => updateSignatureSetting('firma1', 'y', event.target.value)} />
+                  </label>
+                </div>
+              </div>
+              <div className="signature-upload-item">
+                <button type="button" onClick={() => firma2InputRef.current?.click()}>
+                  Adjuntar Firma 2
+                </button>
+                <input
+                  ref={firma2InputRef}
+                  type="file"
+                  accept="image/png"
+                  onChange={(event) => selectSignatureImage(event, 'firma2')}
+                  style={{ display: 'none' }}
+                />
+                <span>{firma2Data ? 'Firma 2 cargada' : 'Sin firma 2'}</span>
+                {firma2Data && <button type="button" onClick={() => removeSignatureImage('firma2')}>Quitar</button>}
+                <div className="signature-settings-grid">
+                  <label>Tamaño (cm)
+                    <input type="number" min="0.1" max="25" step="0.1" value={signatureSettings.firma2.size}
+                      onChange={(event) => updateSignatureSetting('firma2', 'size', event.target.value)} />
+                  </label>
+                  <label>Posición X (cm)
+                    <input type="number" min="0" max="30" step="0.1" value={signatureSettings.firma2.x}
+                      onChange={(event) => updateSignatureSetting('firma2', 'x', event.target.value)} />
+                  </label>
+                  <label>Posición Y (cm)
+                    <input type="number" min="0" max="35" step="0.1" value={signatureSettings.firma2.y}
+                      onChange={(event) => updateSignatureSetting('firma2', 'y', event.target.value)} />
+                  </label>
+                </div>
+              </div>
+              <p className="signature-upload-note">Nota: las imágenes deben ir sin fondo y en formato PNG.</p>
+            </div>
+          )}
 
           <div className="file-item">
             <button>
