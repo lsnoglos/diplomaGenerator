@@ -245,6 +245,7 @@ function App() {
     bgImage,
     firma1Image,
     firma2Image,
+    signatureSettings,
     textAlignOption,
     numberOfLines,
     centerTextArea,
