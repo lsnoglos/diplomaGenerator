@@ -24,16 +24,36 @@
 .main-content {
   display: flex;
   flex-direction: column;
+  gap: 10px;
 }
 
 @media (min-width: 768px) {
   .main-content {
-    flex-direction: row;
+    display: grid;
+    grid-template-columns: minmax(280px, 0.9fr) minmax(0, 2fr);
+    grid-template-areas:
+      "files settings"
+      "preview settings";
+    align-items: start;
+    gap: 14px;
   }
 
-  .main-content > div {
-    flex: 1;
-    margin: 10px;
+  .main-content > .file-selection {
+    grid-area: files;
+    min-width: 0;
+    margin: 10px 0;
+  }
+
+  .main-content > .dimensions-section {
+    grid-area: settings;
+    min-width: 0;
+    margin: 10px 0;
+  }
+
+  .main-content > .canvas-area {
+    grid-area: preview;
+    min-width: 0;
+    margin: 10px 0;
   }
 }
 
