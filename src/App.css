@@ -486,3 +486,15 @@ h2 {
     gap: 5px;
   }
 }
+
+
+.signature-opacity-control {
+  grid-column: 1 / -1;
+  margin-top: 2px;
+}
+
+.signature-opacity-control input[type="range"] {
+  width: 100%;
+  accent-color: #617799;
+  cursor: pointer;
+}
