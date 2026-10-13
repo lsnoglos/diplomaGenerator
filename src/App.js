@@ -1016,7 +1016,10 @@ const drawDiploma = (ctx, x, y, width, height, record) => {
     ctx.textAlign = textAlignOption;
     ctx.textBaseline = 'bottom';
 
-    const words = name.split(' ');
+    // Normaliza vocales acentuadas (por ejemplo, i + tilde combinada)
+    // para que se dibujen correctamente en el lienzo y al exportar.
+    const normalizedName = String(name || '').normalize('NFC');
+    const words = normalizedName.split(' ');
     const lines = [];
     const wordsPerLine = Math.ceil(words.length / numberOfLines);
 
@@ -1028,7 +1031,7 @@ const drawDiploma = (ctx, x, y, width, height, record) => {
 
     let fontSize = calculateFontSize(ctx, lines, textWidthPx, textHeightPx);
 
-    ctx.font = `${fontSize}px '${fontFamily}'`;
+    ctx.font = `${fontSize}px '${fontFamily}', Arial, sans-serif`;
 
     const lineHeight = fontSize + 5;
 
@@ -1056,7 +1059,7 @@ const drawDiploma = (ctx, x, y, width, height, record) => {
     let fits = false;
 
     while (!fits && fontSize > 1) {
-      ctx.font = `${fontSize}px '${fontFamily}'`;
+      ctx.font = `${fontSize}px '${fontFamily}', Arial, sans-serif`;
       let totalHeight = lines.length * (fontSize + 5) - 5;
       let maxLineWidth = 0;
 
@@ -1190,10 +1193,10 @@ const drawDiploma = (ctx, x, y, width, height, record) => {
             .map((record) => record.trim())
             .filter((record) => record !== '')
             .map((record) => {
-              const fields = record.split(',').map((field) => field.trim());
+              const fields = record.split(',').map((field) => field.trim().normalize('NFC'));
 
               return {
-                name: fields[0] || '',
+                name: (fields[0] || '').normalize('NFC'),
                 tomo: fields[1] || '',
                 folio: fields[2] || '',
                 asiento: fields[3] || '',
@@ -1211,7 +1214,7 @@ const drawDiploma = (ctx, x, y, width, height, record) => {
           // nombres separados por coma.
           const names = content
             .split(',')
-            .map((name) => ({ name: name.trim(), enabled: true }))
+            .map((name) => ({ name: name.trim().normalize('NFC'), enabled: true }))
             .filter((item) => item.name !== '');
 
           setNamesList(names);
