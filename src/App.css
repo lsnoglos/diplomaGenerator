@@ -498,3 +498,75 @@ h2 {
   accent-color: #617799;
   cursor: pointer;
 }
+
+
+.generation-loading-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(15, 23, 42, 0.58);
+}
+
+.generation-loading-card {
+  width: min(420px, 100%);
+  padding: 26px 24px;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 18px 55px rgba(0, 0, 0, 0.28);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+}
+
+.generation-loading-card strong {
+  font-size: 18px;
+}
+
+.generation-loading-card span {
+  color: #4b5563;
+  font-variant-numeric: tabular-nums;
+}
+
+.generation-loading-card small {
+  color: #6b7280;
+  line-height: 1.4;
+}
+
+.generation-spinner {
+  width: 42px;
+  height: 42px;
+  border: 4px solid #e5e7eb;
+  border-top-color: #617799;
+  border-radius: 50%;
+  animation: diploma-generation-spin 0.8s linear infinite;
+}
+
+.generation-progress-track {
+  width: 100%;
+  height: 9px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e5e7eb;
+}
+
+.generation-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: #617799;
+  transition: width 0.2s ease;
+}
+
+.generate-button:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+@keyframes diploma-generation-spin {
+  to { transform: rotate(360deg); }
+}
