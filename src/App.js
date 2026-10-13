@@ -23,8 +23,8 @@ const SIGNATURE_STORAGE_KEYS = {
   settings: 'diplomaGenerator.signatureSettings',
 };
 const DEFAULT_SIGNATURE_SETTINGS = {
-  firma1: { x: 21.40, y: 20.55, size: 4.50 },
-  firma2: { x: 8.82, y: 20.65, size: 4.20 },
+  firma1: { x: 21.40, y: 20.55, size: 4.50, opacity: 100 },
+  firma2: { x: 8.82, y: 20.65, size: 4.20, opacity: 100 },
 };
 
 function App() {
@@ -63,8 +63,8 @@ function App() {
     try {
       const saved = JSON.parse(localStorage.getItem(SIGNATURE_STORAGE_KEYS.settings) || '{}');
       return {
-        firma1: { ...DEFAULT_SIGNATURE_SETTINGS.firma1, ...(saved.firma1 || {}) },
-        firma2: { ...DEFAULT_SIGNATURE_SETTINGS.firma2, ...(saved.firma2 || {}) },
+        firma1: { ...DEFAULT_SIGNATURE_SETTINGS.firma1, ...(saved.firma1 || {}), opacity: saved.firma1?.opacity ?? 100 },
+        firma2: { ...DEFAULT_SIGNATURE_SETTINGS.firma2, ...(saved.firma2 || {}), opacity: saved.firma2?.opacity ?? 100 },
       };
     } catch {
       return DEFAULT_SIGNATURE_SETTINGS;
@@ -936,7 +936,9 @@ function App() {
     const x = cmToPx(Number(config.x) || 0) - targetWidth / 2;
     const y = cmToPx(Number(config.y) || 0) - targetHeight - cmToPx(0.05);
 
+    ctx.globalAlpha = Math.max(0, Math.min(100, Number(config.opacity ?? 100))) / 100;
     ctx.drawImage(image, x, y, targetWidth, targetHeight);
+    ctx.globalAlpha = 1;
   });
   ctx.restore();
 };
@@ -1741,6 +1743,10 @@ const drawDiploma = (ctx, x, y, width, height, record) => {
                     <input type="number" min="0" max="35" step="0.1" value={signatureSettings.firma1.y}
                       onChange={(event) => updateSignatureSetting('firma1', 'y', event.target.value)} />
                   </label>
+                  <label className="signature-opacity-control">Transparencia ({100 - Number(signatureSettings.firma1.opacity ?? 100)}%)
+                    <input type="range" min="10" max="100" step="5" value={signatureSettings.firma1.opacity ?? 100}
+                      onChange={(event) => updateSignatureSetting('firma1', 'opacity', Number(event.target.value))} />
+                  </label>
                 </div>
               </div>
               <div className="signature-upload-item">
@@ -1768,6 +1774,10 @@ const drawDiploma = (ctx, x, y, width, height, record) => {
                   <label>Posición Y (cm)
                     <input type="number" min="0" max="35" step="0.1" value={signatureSettings.firma2.y}
                       onChange={(event) => updateSignatureSetting('firma2', 'y', event.target.value)} />
+                  </label>
+                  <label className="signature-opacity-control">Transparencia ({100 - Number(signatureSettings.firma2.opacity ?? 100)}%)
+                    <input type="range" min="10" max="100" step="5" value={signatureSettings.firma2.opacity ?? 100}
+                      onChange={(event) => updateSignatureSetting('firma2', 'opacity', Number(event.target.value))} />
                   </label>
                 </div>
               </div>
