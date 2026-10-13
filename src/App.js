@@ -3,8 +3,20 @@ import './App.css';
 import interact from 'interactjs';
 import { throttle } from 'lodash';
 import cloisterBlackFont from './CloisterBlack.ttf';
+import englishTowneFont from './EnglishTowne.ttf';
+import oldLondonFont from './OldLondon.ttf';
+import theBoldFont from './THEBOLDFONT.ttf';
+import avrileSansBlackFont from './avrile-sans.black.ttf';
 
 const DEFAULT_FONT_FAMILY = 'CloisterBlack';
+const FONT_OPTIONS = [
+  { file: 'CloisterBlack.ttf', family: 'CloisterBlack', source: cloisterBlackFont },
+  { file: 'EnglishTowne.ttf', family: 'EnglishTowne', source: englishTowneFont },
+  { file: 'OldLondon.ttf', family: 'OldLondon', source: oldLondonFont },
+  { file: 'THEBOLDFONT.ttf', family: 'THEBOLDFONT', source: theBoldFont },
+  { file: 'avrile-sans.black.ttf', family: 'AvrileSansBlack', source: avrileSansBlackFont },
+];
+const FONT_STORAGE_KEY = 'diplomaGenerator.selectedFont';
 const SIGNATURE_STORAGE_KEYS = {
   firma1Image: 'diplomaGenerator.firma1Image',
   firma2Image: 'diplomaGenerator.firma2Image',
@@ -17,6 +29,16 @@ const DEFAULT_SIGNATURE_SETTINGS = {
 
 function App() {
   const [fontPath, setFontPath] = useState('');
+  const [selectedFontFile, setSelectedFontFile] = useState(() => {
+    try {
+      const savedFont = localStorage.getItem(FONT_STORAGE_KEY);
+      return FONT_OPTIONS.some((font) => font.file === savedFont)
+        ? savedFont
+        : 'CloisterBlack.ttf';
+    } catch {
+      return 'CloisterBlack.ttf';
+    }
+  });
   const [fontFamily, setFontFamily] = useState(DEFAULT_FONT_FAMILY);
   const [fontReady, setFontReady] = useState(false);
   const [imgPath, setImgPath] = useState(() => {
@@ -116,33 +138,43 @@ function App() {
   useEffect(() => {
     let cancelled = false;
 
-    const loadDefaultFont = async () => {
+    const loadSelectedFont = async () => {
+      const selectedFont = FONT_OPTIONS.find((font) => font.file === selectedFontFile)
+        || FONT_OPTIONS[0];
+
       try {
-        const font = new FontFace(
-          DEFAULT_FONT_FAMILY,
-          `url(${cloisterBlackFont})`
-        );
+        const font = new FontFace(selectedFont.family, `url(${selectedFont.source})`);
         const loadedFont = await font.load();
         document.fonts.add(loadedFont);
 
         if (!cancelled) {
+          setFontFamily(selectedFont.family);
           setFontReady(true);
         }
       } catch (error) {
-        console.error('Failed to load default font:', error);
+        console.error(`No se pudo cargar la fuente ${selectedFont.file}:`, error);
 
         if (!cancelled) {
+          setFontFamily(DEFAULT_FONT_FAMILY);
           setFontReady(true);
         }
       }
     };
 
-    loadDefaultFont();
+    loadSelectedFont();
 
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [selectedFontFile]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(FONT_STORAGE_KEY, selectedFontFile);
+    } catch (error) {
+      console.error('No se pudo guardar la fuente seleccionada:', error);
+    }
+  }, [selectedFontFile]);
 
   useEffect(() => {
     diplomaRotationRef.current = diplomaRotation;
@@ -1656,37 +1688,26 @@ const drawDiploma = (ctx, x, y, width, height, record) => {
             )}
           </div>
 
-          <div className="file-item">
-            <button>
-              <label>
-                Seleccione letra
-                <input
-                  type="file"
-                  accept=".ttf"
-                  onChange={selectFont}
-                  style={{ display: 'none' }}
-                  ref={fontInputRef}
-                />
-              </label>
-            </button>
-            <span>
-              {fontPath.name ? fontPath.name + '  ' : 'Predeterminada: CloisterBlack.ttf  '}
-            </span>
-            {fontPath.name ? (
-              <button
-                onClick={() => {
-                  setFontPath('');
-                  setFontFamily(DEFAULT_FONT_FAMILY);
-                  if (fontInputRef.current) {
-                    fontInputRef.current.value = '';
-                  }
-                }}
-              >
-                Eliminar Letra
-              </button>
-            ) : (
-              ''
-            )}
+          <div className="file-item font-selection">
+            <label htmlFor="font-family-select">Tipo de letra:</label>
+            <select
+              id="font-family-select"
+              value={selectedFontFile}
+              onChange={(event) => setSelectedFontFile(event.target.value)}
+            >
+              {FONT_OPTIONS.map((font) => (
+                <option key={font.file} value={font.file}>{font.file}</option>
+              ))}
+            </select>
+            <input
+              type="file"
+              accept=".ttf"
+              onChange={selectFont}
+              style={{ display: 'none' }}
+              ref={fontInputRef}
+              aria-hidden="true"
+              tabIndex={-1}
+            />
           </div>
 
           {selectedConfiguration === 'diploma' && (
