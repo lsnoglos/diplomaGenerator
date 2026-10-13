@@ -82,6 +82,8 @@ function App() {
   const [previewMode, setPreviewMode] = useState('prueba');
   const [currentPage, setCurrentPage] = useState(0);
   const [editIndex, setEditIndex] = useState(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationProgress, setGenerationProgress] = useState({ current: 0, total: 0 });
 
   const canvasRef = useRef(null);
 
@@ -1449,162 +1451,181 @@ const drawDiploma = (ctx, x, y, width, height, record) => {
   // generate images
   const generateImages = async () => {
     const enabledNames = namesList.filter((name) => name.enabled);
-    const itemsPerPage = calculateItemsPerPage();
-    const totalPages = Math.ceil(enabledNames.length / itemsPerPage);
-    const images = [];
-    console.log(enabledNames.length);
+    if (enabledNames.length === 0) {
+      alert('Primero selecciona una lista de nombres o agrega al menos un alumno antes de generar los diplomas.');
+      return;
+    }
+    if (isGenerating) return;
 
+    const itemsPerPage = Math.max(1, calculateItemsPerPage());
+    const totalPages = Math.ceil(enabledNames.length / itemsPerPage);
     const originalPreviewMode = previewMode;
 
-    // preview
+    setIsGenerating(true);
+    setGenerationProgress({ current: 0, total: enabledNames.length });
     setPreviewMode('lista');
+    // Permite que React muestre el indicador de carga antes de comenzar el proceso.
+    await new Promise((resolve) => setTimeout(resolve, 50));
 
-    for (let pageIndex = 0; pageIndex < totalPages; pageIndex++) {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-
-      const pageDimensions = getPageDimensions(pageSize);
-      let pageWidthCm = pageDimensions.width;
-      let pageHeightCm = pageDimensions.height;
-
-      if (orientation === 'horizontal') {
-        [pageWidthCm, pageHeightCm] = [pageHeightCm, pageWidthCm];
-      }
-
-      // Para la configuración Diploma se exporta a 300 DPI equivalentes
-      // y en PNG para evitar la compresión con pérdida de JPEG.
-      // Las configuraciones existentes mantienen exactamente su exportación actual.
-      const isDiplomaExport = selectedConfiguration === 'diploma';
-      const exportScale = isDiplomaExport ? 300 / 96 : 1;
-
-      const pageWidthPx = cmToPx(pageWidthCm);
-      const pageHeightPx = cmToPx(pageHeightCm);
-
-      canvas.width = Math.round(pageWidthPx * exportScale);
-      canvas.height = Math.round(pageHeightPx * exportScale);
-
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = isDiplomaExport ? 'high' : 'medium';
-
-      if (isDiplomaExport) {
-        ctx.scale(exportScale, exportScale);
-      }
-
-      ctx.fillStyle = '#FFFFFF';
-      ctx.fillRect(0, 0, pageWidthPx, pageHeightPx);
-
-      let diplomaWidthPx = cmToPx(diplomaWidthCm);
-      let diplomaHeightPx = cmToPx(diplomaHeightCm);
-
-      if (diplomaOrientation === 'horizontal') {
-        [diplomaWidthPx, diplomaHeightPx] = [diplomaHeightPx, diplomaWidthPx];
-      }
-
-      let columns = 1;
-      let rows = 1;
-      let marginX = 0;
-      let marginY = 0;
-
-      const epsilon = 0.0001;
-
-      if (fillPageMode === 'automatic') {
-        if (marginMode === 'none') {
-          marginX = 0;
-          marginY = 0;
-          columns = Math.floor((canvas.width + epsilon) / diplomaWidthPx);
-          rows = Math.floor((canvas.height + epsilon) / diplomaHeightPx);
-        } else if (marginMode === 'manual') {
-          marginX = cmToPx(manualMargin);
-          marginY = cmToPx(manualMargin);
-          columns = Math.floor(
-            (canvas.width + epsilon + marginX) / (diplomaWidthPx + marginX)
-          );
-          rows = Math.floor(
-            (canvas.height + epsilon + marginY) / (diplomaHeightPx + marginY)
-          );
-        } else if (marginMode === 'automatic') {
-          columns = Math.floor((canvas.width + epsilon) / diplomaWidthPx);
-          rows = Math.floor((canvas.height + epsilon) / diplomaHeightPx);
-
-          marginX = (canvas.width - columns * diplomaWidthPx) / (columns + 1);
-          marginY = (canvas.height - rows * diplomaHeightPx) / (rows + 1);
-
-          if (marginX < 0) marginX = 0;
-          if (marginY < 0) marginY = 0;
+    try {
+      for (let pageIndex = 0; pageIndex < totalPages; pageIndex++) {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+  
+        const pageDimensions = getPageDimensions(pageSize);
+        let pageWidthCm = pageDimensions.width;
+        let pageHeightCm = pageDimensions.height;
+  
+        if (orientation === 'horizontal') {
+          [pageWidthCm, pageHeightCm] = [pageHeightCm, pageWidthCm];
         }
-
+  
+        // Para la configuración Diploma se exporta a 300 DPI equivalentes
+        // y en PNG para evitar la compresión con pérdida de JPEG.
+        // Las configuraciones existentes mantienen exactamente su exportación actual.
+        const isDiplomaExport = selectedConfiguration === 'diploma';
+        const exportScale = isDiplomaExport ? 300 / 96 : 1;
+  
+        const pageWidthPx = cmToPx(pageWidthCm);
+        const pageHeightPx = cmToPx(pageHeightCm);
+  
+        canvas.width = Math.round(pageWidthPx * exportScale);
+        canvas.height = Math.round(pageHeightPx * exportScale);
+  
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = isDiplomaExport ? 'high' : 'medium';
+  
+        if (isDiplomaExport) {
+          ctx.scale(exportScale, exportScale);
+        }
+  
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, pageWidthPx, pageHeightPx);
+  
+        let diplomaWidthPx = cmToPx(diplomaWidthCm);
+        let diplomaHeightPx = cmToPx(diplomaHeightCm);
+  
+        if (diplomaOrientation === 'horizontal') {
+          [diplomaWidthPx, diplomaHeightPx] = [diplomaHeightPx, diplomaWidthPx];
+        }
+  
+        let columns = 1;
+        let rows = 1;
+        let marginX = 0;
+        let marginY = 0;
+  
+        const epsilon = 0.0001;
+  
+        if (fillPageMode === 'automatic') {
+          if (marginMode === 'none') {
+            marginX = 0;
+            marginY = 0;
+            columns = Math.floor((canvas.width + epsilon) / diplomaWidthPx);
+            rows = Math.floor((canvas.height + epsilon) / diplomaHeightPx);
+          } else if (marginMode === 'manual') {
+            marginX = cmToPx(manualMargin);
+            marginY = cmToPx(manualMargin);
+            columns = Math.floor(
+              (canvas.width + epsilon + marginX) / (diplomaWidthPx + marginX)
+            );
+            rows = Math.floor(
+              (canvas.height + epsilon + marginY) / (diplomaHeightPx + marginY)
+            );
+          } else if (marginMode === 'automatic') {
+            columns = Math.floor((canvas.width + epsilon) / diplomaWidthPx);
+            rows = Math.floor((canvas.height + epsilon) / diplomaHeightPx);
+  
+            marginX = (canvas.width - columns * diplomaWidthPx) / (columns + 1);
+            marginY = (canvas.height - rows * diplomaHeightPx) / (rows + 1);
+  
+            if (marginX < 0) marginX = 0;
+            if (marginY < 0) marginY = 0;
+          }
+  
+          columns = Math.max(1, columns);
+          rows = Math.max(1, rows);
+        } else if (fillPageMode === 'manual') {
+          // modo manual
+        }
+  
         columns = Math.max(1, columns);
         rows = Math.max(1, rows);
-      } else if (fillPageMode === 'manual') {
-        // modo manual
-      }
-
-      columns = Math.max(1, columns);
-      rows = Math.max(1, rows);
-
-      if (marginX < 0) marginX = 0;
-      if (marginY < 0) marginY = 0;
-
-      let startIndex = pageIndex * itemsPerPage;
-      let endIndex = Math.min(startIndex + itemsPerPage, enabledNames.length);
-      let count = startIndex;
-
-      for (let row = 0; row < rows; row++) {
-        for (let col = 0; col < columns; col++) {
-          if (count >= endIndex) {
-            break;
+  
+        if (marginX < 0) marginX = 0;
+        if (marginY < 0) marginY = 0;
+  
+        let startIndex = pageIndex * itemsPerPage;
+        let endIndex = Math.min(startIndex + itemsPerPage, enabledNames.length);
+        let count = startIndex;
+  
+        for (let row = 0; row < rows; row++) {
+          for (let col = 0; col < columns; col++) {
+            if (count >= endIndex) {
+              break;
+            }
+            const x = marginX + col * (diplomaWidthPx + marginX);
+            const y = marginY + row * (diplomaHeightPx + marginY);
+            drawDiploma(
+              ctx,
+              x,
+              y,
+              diplomaWidthPx,
+              diplomaHeightPx,
+              enabledNames[count]
+            );
+            count++;
           }
-          const x = marginX + col * (diplomaWidthPx + marginX);
-          const y = marginY + row * (diplomaHeightPx + marginY);
-          drawDiploma(
-            ctx,
-            x,
-            y,
-            diplomaWidthPx,
-            diplomaHeightPx,
-            enabledNames[count]
-          );
-          count++;
         }
+  
+        // Guardar la imagen.
+        // Diploma: PNG de alta resolución (300 DPI equivalentes).
+        // Resto: se conserva el JPEG existente.
+        const imageData = isDiplomaExport
+          ? canvas.toDataURL('image/png')
+          : canvas.toDataURL('image/jpeg');
+  
+        const pageNames = enabledNames
+          .slice(startIndex, endIndex)
+          .map((record) => (typeof record === 'string' ? record : record.name || 'Diploma'))
+          .filter(Boolean);
+        const safeFileName = (isDiplomaExport && pageNames.length
+          ? pageNames.join('_')
+          : `pagina_${pageIndex + 1}`)
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[<>:"/\\|?*\x00-\x1F]/g, '')
+          .replace(/\s+/g, '_')
+          .replace(/_+/g, '_')
+          .replace(/^_|_$/g, '')
+          .slice(0, 140) || `diploma_${pageIndex + 1}`;
+  
+        // Descargar cada página conforme se genera evita guardar decenas de
+        // imágenes de alta resolución en memoria al procesar listas grandes.
+        const link = document.createElement('a');
+        link.href = imageData;
+        link.download = `${safeFileName || `pagina_${pageIndex + 1}`}.${isDiplomaExport ? 'png' : 'jpg'}`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+  
+        setGenerationProgress({
+          current: Math.min(endIndex, enabledNames.length),
+          total: enabledNames.length,
+        });
+  
+        // Espaciar las descargas reduce bloqueos del navegador en listas largas.
+        await new Promise((resolve) => setTimeout(resolve, 350));
       }
-
-      // Guardar la imagen.
-      // Diploma: PNG de alta resolución (300 DPI equivalentes).
-      // Resto: se conserva el JPEG existente.
-      const imageData = isDiplomaExport
-        ? canvas.toDataURL('image/png')
-        : canvas.toDataURL('image/jpeg');
-
-      const pageNames = enabledNames
-        .slice(startIndex, endIndex)
-        .map((record) => (typeof record === 'string' ? record : record.name || 'Diploma'))
-        .filter(Boolean);
-      const safeFileName = (isDiplomaExport && pageNames.length
-        ? pageNames.join('_')
-        : `pagina_${pageIndex + 1}`)
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[<>:"/\\|?*\x00-\x1F]/g, '')
-        .replace(/\s+/g, '_')
-        .replace(/_+/g, '_')
-        .replace(/^_|_$/g, '')
-        .slice(0, 140) || `diploma_${pageIndex + 1}`;
-
-      images.push({
-        dataUrl: imageData,
-        extension: isDiplomaExport ? 'png' : 'jpg',
-        fileName: safeFileName,
-      });
+  
+  
+    } catch (error) {
+      console.error('Error generando diplomas:', error);
+      alert('Ocurrió un error al generar los diplomas. Si son muchos, intenta cerrar otras pestañas y volver a intentarlo.');
+    } finally {
+      setPreviewMode(originalPreviewMode);
+      setIsGenerating(false);
+      setGenerationProgress({ current: 0, total: 0 });
     }
-
-    setPreviewMode(originalPreviewMode);
-
-    images.forEach(({ dataUrl, extension, fileName }, index) => {
-      const link = document.createElement('a');
-      link.href = dataUrl;
-      link.download = `${fileName || `pagina_${index + 1}`}.${extension}`;
-      link.click();
-    });
   };
 
   let backgroundSize = 'cover';
@@ -1644,10 +1665,29 @@ const drawDiploma = (ctx, x, y, width, height, record) => {
       <h1>Generador de Diplomas</h1>
 
       <div className="fixed-bar">
-        <button className="generate-button" onClick={generateImages}>
-          GENERAR
+        <button className="generate-button" onClick={generateImages} disabled={isGenerating}>
+          {isGenerating ? 'GENERANDO…' : 'GENERAR'}
         </button>
       </div>
+
+      {isGenerating && (
+        <div className="generation-loading-overlay" role="status" aria-live="polite">
+          <div className="generation-loading-card">
+            <div className="generation-spinner" />
+            <strong>Generando diplomas…</strong>
+            <span>{generationProgress.current} de {generationProgress.total}</span>
+            <div className="generation-progress-track">
+              <div
+                className="generation-progress-fill"
+                style={{
+                  width: `${generationProgress.total ? (generationProgress.current / generationProgress.total) * 100 : 0}%`,
+                }}
+              />
+            </div>
+            <small>No cierres esta página mientras se generan y descargan los archivos.</small>
+          </div>
+        </div>
+      )}
 
       <div className="main-content">
         <div className="file-selection">
